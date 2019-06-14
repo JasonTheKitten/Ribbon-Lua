@@ -1,10 +1,6 @@
 local cplat = require()
 
---[[local process = cplat.require "process"
-process.addEventListener("key_up", function() print("H") end)
-while true do 
-	coroutine.yield() 
-end]]
+local process = cplat.require "process"
 
 local gui = cplat.require "gui"
 local ctxu = cplat.require "contextutils"
@@ -17,6 +13,7 @@ local ctx = gui.getNativeContext(display)
 ctx.startDraw()
 
 local timerLabel = " CPlat Timer "
+local ttime = ""
 
 local function draw(t, rst)
 	local titlePosX, titlePosY = ctxu.calcPos(ctx, 0, .5, 0, .3, #timerLabel, -.5, 1, 0)
@@ -33,7 +30,19 @@ local function draw(t, rst)
 end
 
 draw(0, true)
-for i=0, 10 do
+process.addEventListener("char", function(e)
+	if tonumber(e.char) then
+		ttime = ttime..e.char
+		draw(ttime)
+		if #ttime == 3 then
+			process.setInterruptsEnabled(false)
+		end
+	end
+end)
+while process.getInterruptsEnabled() do
+	coroutine.yield()
+end
+for i=0, tonumber(ttime) do
 	draw(i)
 	sleep(1)
 	i=i+1

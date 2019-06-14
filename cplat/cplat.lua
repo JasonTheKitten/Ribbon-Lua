@@ -99,7 +99,7 @@ end
 --Other stuff
 cplat.installGlobals = function(tbl)
     (tbl or env)._G = _ENV or _G
-    return tbl._G
+    return (tbl or env)._G
 end
 
 --Functions for env

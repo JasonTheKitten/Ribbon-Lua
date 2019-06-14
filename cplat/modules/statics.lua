@@ -50,3 +50,37 @@ mstatics.colours = colors
 
 statics.COLORS = mstatics.colors
 statics.COLOURS = mstatics.colors
+
+local keys = { --Based off of the OC key list, but should work with CC
+	["F11"] = 0x57,
+	["F12"] = 0x58,
+	["backspace"] = 0x0E,
+} --TODO: alot more keys
+local function putRow(code, letters)
+	for i=1, #letters do
+		keys[code-1+i] = letters:sub(i, i)
+	end
+end
+local function putRowT(code, k)
+	for i=1, #k do
+		keys[code-1+i] = k[i]
+	end
+end
+putRow(0x02, "`1234567890-=")
+putRow(0x10, "qertyuiop[]\\")
+putRow(0x1E, "asdfghjkl;'")
+putRow(0x2C,"zxcvbnm,./")
+putRowT(0x3B, {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"})
+
+for k, v in pairs(keys) do
+	keys[v] = k
+end
+keys.space = keys[" "]
+
+mstatics.keys = keys
+statics.KEYS = mstatics.keys
+
+local mouse = {}
+mstatics.mouse = mouse
+
+statics.MOUSE = mstatics.mouse

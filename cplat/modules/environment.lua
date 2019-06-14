@@ -24,7 +24,7 @@ environment.is = function(m)
     
     return false
 end
-environment.isNP = function(m)
+environment.rootIs = function(m)
 	return getRoot().is(m)
 end
 
@@ -33,7 +33,7 @@ environment.isRoot = function()
 end
 
 environment.getDefault = function()
-    return _ENV
+    return _ENV or _G
 end
 
 environment.getNatives = function()

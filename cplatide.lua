@@ -3,7 +3,7 @@
 
 --App Info
 local APP = {
-	TYPE = "TERMINAL",
+	TYPE = "GRAPHICAL",
 	PATHS = {
 		APP = "${PATH}/app",
 		ASSETS = "${PATH}/assets",
@@ -24,7 +24,6 @@ local APP = {
 
 --Glue
 local baseError = "App failed to launch!"
---local rmT = false
 local results = {pcall(function(...)
 	--Alt require
 	local function prequire(file)

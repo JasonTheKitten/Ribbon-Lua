@@ -12,53 +12,74 @@ local process = ...
 local eventregister = {}
 local backgroundscripts = {}
 
-local eq = {}
+local charsStr =
+	"`1234567890-="..
+	"qwertyuiop[]\\"..
+	"asdfghjkl;'"..
+	"zxcvbnm,./"..
+	"~!@#$%^&*()_+"..
+	"QWERTYUIOP{}|"..
+	"ASDFGHJKL:\""..
+	"ZXCVBNM<>?:"..
+	"\t "
+	
+chars = util.stringToTable(charsStr, true)
 
+
+local eq = {}
 process.execute = function(f, ...)
 	local cid = tostring(cplat):gsub("table: ", "")
 	if isCC then natives.os.queueEvent("q_bottom", cid) end
 	local ok, err
 	local c = coroutine.create(f)
 	ok, err = coroutine.resume(c, ...)
-	local resume = function() end
+	local catchEvents
+	local function resume()
+		for i=1, #eq do
+			process.fireEvent("rawevent", {
+				event = eq[i], 
+				rawevent = eq[i],
+				parent = process
+			})
+			if eventregister[eq[i][1]] then eventregister[eq[i][1]](eq[i]) end
+		end
+		ok, err = coroutine.resume(c, cplat.getPassArgs())
+	end
 	if isCC then
-		resume = function()
+		catchEvents = function()
 			eq = {}
 			local e = {coroutine.yield()}
 			while (e[1]~="q_bottom" and e[2]~=cid) do
-				if e[1] == "terminate" then error("Terminated", -1) end
+				if e[1] == "terminate" then error("User terminated application", -1) end
 				table.insert(eq, 1, e)
 				e = {coroutine.yield()}
 			end
 			natives.os.queueEvent("q_bottom", tostring(cplat):gsub("table: ", ""))
-			for i=1, #eq do
-				process.fireEvent(eq[i][1], {})
-			end
-			ok, err = coroutine.resume(c, cplat.getPassArgs())
 		end
 	elseif isOC then
-		resume = function()
+		catchEvents = function()
 			eq = {}
 			local e = {natives.require("computer").pullSignal(0)}
 			while (#e>0) do
 				table.insert(eq, 1, e)
 				e = {natives.require("computer").pullSignal(0)}
 			end
-			for i=1, #eq do
-				process.fireEvent(eq[i][1], {})
-			end
-			ok, err = coroutine.resume(c, cplat.getPassArgs())
 		end
 	elseif isCP then
-		resume = function()
+		catchEvents = function()
 			coroutine.yield()
 			ok, err = coroutine.resume(c, cplat.getPassArgs())
 		end
 	end
 	while coroutine.status(c)~="dead" do
+		catchEvents()
 		resume()
 	end
 	if not ok then error(err, -1) end
+end
+
+process.registerEvent = function(e, f)
+	eventregister[e] = f
 end
 
 process.createEventSystem = function()
@@ -154,5 +175,66 @@ process.createSynchronousEventQueue = function(es)
 	local queue = {}
 end
 
+--Setup
 local m_es, installer = process.createEventSystem()
 installer(process)
+
+if isCC then
+	process.registerEvent("key", function(e)
+		process.fireEvent("key_down", {
+			parent = process,
+			code = e[2],
+			rawevent = e
+		})
+	end)
+	process.registerEvent("key_up", function(e)
+		process.fireEvent("key_up", {
+			parent = process,
+			code = e[2],
+			rawevent = e
+		})
+	end)
+	process.registerEvent("char", function(e)
+		process.fireEvent("char", {
+			parent = process,
+			char = e[2],
+			rawevent = e
+		})
+	end)
+	process.registerEvent("paste", function(e)
+		process.fireEvent("paste", {
+			parent = process,
+			text = e[2],
+			rawevent = e
+		})
+	end)
+else
+	process.registerEvent("key_down", function(e)
+		process.fireEvent("key_down", {
+			parent = process,
+			code = e[4],
+			rawevent = e
+		})
+		if chars[string.char(e[3])] then
+			process.fireEvent("char", {
+				parent = process,
+				char = string.char(e[3]),
+				rawevent = e
+			})
+		end
+	end)
+	process.registerEvent("key_up", function(e)
+		process.fireEvent("key_up", {
+			parent = process,
+			code = e[4],
+			rawevent = e
+		})
+	end)
+	process.registerEvent("clipboard", function(e)
+		process.fireEvent("paste", {
+			parent = process,
+			text = e[3],
+			rawevent = e
+		})
+	end)
+end

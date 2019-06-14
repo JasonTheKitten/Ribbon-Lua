@@ -1,3 +1,4 @@
+--TODO: util.reverse
 local util = ...
 
 util.copy = function(val)
@@ -15,4 +16,16 @@ util.pairs = function(tbl)
 end
 util.ipairs = function(tbl)
 	return ipairs(util.copy(tbl))
+end
+
+util.stringToTable = function(s, r)
+	local tbl = {}
+	for i=1, #s do
+		if r then 
+			tbl[s:sub(i, i)] = i
+		else
+			tbl[i] = s:sub(i, i)
+		end
+	end
+	return tbl
 end
