@@ -1,6 +1,7 @@
 local cplat = require()
 local environment = cplat.require "environment"
 local util = cplat.require "util"
+local debugger = cplat.require "debugger"
 
 local natives = environment.getNatives()
 
@@ -102,22 +103,32 @@ process.createEventSystem = function()
 			return --
 		end
 		eventSystem.doDefault = true
+		local function execL(v)
+			local c = coroutine.create(function(...)
+				local ok, err = pcall(v, ...)
+				if not ok then debugger.error(err) end
+			end)
+			coroutine.resume(c, d, e)
+			if coroutine.status(c) ~= "dead" then
+				debugger.warn("Interrupt yielded before completion; Execution will not finish.")
+			end
+		end
 		if e~=nil and eventSystem.listeners[e] then
 			for k, v in util.pairs(eventSystem.listeners[e]) do
-				v(d)
+				execL(v)
 			end
 		end
 		for k, v in util.pairs(eventSystem.rlisteners) do
-			v(e, d)
+			execL(v)
 		end
 		if eventSystem.doDefault then
 			if e~=nil and eventSystem.defaultListeners[e] then
 				for k, v in util.pairs(eventSystem.defaultListeners[e]) do
-					v(d)
+					execL(v)
 				end
 			end
 			for k, v in util.pairs(eventSystem.defaultRListeners) do
-				v(e, d)
+				execL(v)
 			end
 		end
 	end

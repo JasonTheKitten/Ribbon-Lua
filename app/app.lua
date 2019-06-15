@@ -36,12 +36,14 @@ process.addEventListener("char", function(e)
 		draw(ttime)
 		if #ttime == 3 then
 			process.setInterruptsEnabled(false)
+			sleep(1)
 		end
 	end
 end)
 while process.getInterruptsEnabled() do
 	coroutine.yield()
 end
+sleep(1)
 for i=0, tonumber(ttime) do
 	draw(i)
 	sleep(1)

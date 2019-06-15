@@ -12,6 +12,8 @@ local APP = {
 		DATA = "${APP}/data",
 		ROOT = "/",
 		
+		DEBUGFILE = "${PATH}/debug.log",
+		
 		PATH = nil,
 		CPLAT = nil,
 	},
