@@ -24,7 +24,7 @@ end
 cpv.getVersionDisplayString = function()
 	local vs = "v"..cpv.getVersionString()
 	if not cn then return "CPlat "..vs
-	if cn:lower()=="alpha" or cn:lower=="beta" then
+	if cn:lower()=="alpha" or cn:lower()=="beta" then
 		return "CPlat "..vs.." "..cn
 	else
 		"CPlat "..cn.." "..vs

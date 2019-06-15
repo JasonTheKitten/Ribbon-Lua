@@ -36,7 +36,6 @@ process.addEventListener("char", function(e)
 		draw(ttime)
 		if #ttime == 3 then
 			process.setInterruptsEnabled(false)
-			sleep(1)
 		end
 	end
 end)

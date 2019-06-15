@@ -7,7 +7,6 @@ local function put(data)
 	local res = cplat.resolvePath(dbgf)
 	if res ~= dbgf then
 		local h, e = io.open(res, "a")
-		print(h, e)
 		if h then
 			h:write(data.."\n")
 			h:close()

@@ -12,6 +12,7 @@ local isOC = environment.is("OC")
 local process = ...
 local eventregister = {}
 local backgroundscripts = {}
+local eventsystems = {}
 
 local charsStr =
 	"`1234567890-="..
@@ -191,6 +192,7 @@ local m_es, installer = process.createEventSystem()
 installer(process)
 
 if isCC then
+	--Keyboard
 	process.registerEvent("key", function(e)
 		process.fireEvent("key_down", {
 			parent = process,
@@ -219,7 +221,28 @@ if isCC then
 			rawevent = e
 		})
 	end)
+	
+	--Modem
+	process.registerEvent("modem_message", function(e)
+		process.fireEvent("modem_message", {
+			parent = process,
+			rawevent = e,
+			sender = e[2],
+			port = e[3],
+			message = e[5],
+			distance = e[6],
+		})
+	end)
+	
+	--Display
+	process.registerEvent("term_resize", function(e)
+		process.fireEvent("display_resize", {
+			parent = process,
+			rawevent = e
+		})
+	end)
 else
+	--Keyboard
 	process.registerEvent("key_down", function(e)
 		process.fireEvent("key_down", {
 			parent = process,
@@ -248,4 +271,27 @@ else
 			rawevent = e
 		})
 	end)
+	
+	--Modem
+	process.registerEvent("modem_message", function(e)
+		process.fireEvent("modem_message", {
+			parent = process,
+			rawevent = e,
+			sender = e[3],
+			port = e[4],
+			distance = e[5],
+			message = e[6]
+		})
+	end)
+	
+	--Display
+	process.registerEvent("screen_resize", function(e)
+		process.fireEvent("display_resize", {
+			parent = process,
+			rawevent = e
+		})
+	end)
+	
+	--Mouse
+	
 end
