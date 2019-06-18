@@ -1,9 +1,8 @@
 local cplat = require()
 local environment = cplat.require "environment"
 
-local natives = environment.getNativesRoot()
+local natives = environment.getNatives()
 
-local isCP = environment.rootIs("CP")
 local isCC = environment.rootIs("CC")
 local isOC = environment.rootIs("OC")
 

@@ -7,7 +7,6 @@ local debugger = cplat.require "debugger"
 
 local natives = environment.getNatives()
 
-local isCP = environment.is("CP")
 local isCC = environment.is("CC")
 local isOC = environment.is("OC")
 
@@ -68,11 +67,6 @@ process.execute = function(f, ...)
 				table.insert(eq, 1, e)
 				e = {natives.require("computer").pullSignal(0)}
 			end
-		end
-	elseif isCP then
-		catchEvents = function()
-			coroutine.yield()
-			ok, err = coroutine.resume(c, cplat.getPassArgs())
 		end
 	end
 	while coroutine.status(c)~="dead" do
@@ -442,7 +436,8 @@ else
 			rawevent = e,
 			id = e[2]
 		})
-	end)process.registerEvent("component_removed", function(e)
+	end)
+	process.registerEvent("component_removed", function(e)
 		process.fireEvent("device_removed", {
 			parent = process,
 			rawevent = e,

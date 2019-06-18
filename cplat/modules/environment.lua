@@ -3,15 +3,6 @@ local cplat = require()
 local environment = ... --{}
 local envn = cplat.installGlobals({})
 
-local function getRoot()
-	local plat = cplat
-	while plat.require("environment").is("CP") do
-		plat = plat.require("environment").getNatives().require()
-	end
-	
-	return plat
-end
-
 environment.is = function(m)
     m=m:lower()
     if (m=="cplat" or m=="cp") and pcall(envn.require, "") then
@@ -24,13 +15,6 @@ environment.is = function(m)
     
     return false
 end
-environment.rootIs = function(m)
-	return getRoot().is(m)
-end
-
-environment.isRoot = function()
-	return getRoot()==cplat
-end
 
 environment.getDefault = function()
     return _ENV or _G
@@ -39,8 +23,9 @@ end
 environment.getNatives = function()
     return envn
 end
-environment.getNativesRoot = function()
-	return getRoot().require("environment").getNatives()
+
+if environment.is("CP") then
+	error("Nesting CPlat applications is not supported at this time; Please use the \"shell\" module instead.", -1)
 end
 
 --return environment

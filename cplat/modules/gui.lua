@@ -10,7 +10,6 @@ local ctxu = cplat.require "contextutils"
 
 local natives = environment.getNatives()
 
-local isCP = environment.is("CP")
 local isCC = environment.is("CC")
 local isOC = environment.is("OC")
 
@@ -40,9 +39,7 @@ gui.getDisplay = function(id)
 	return gui.getDisplays()[id or 1]
 end
 gui.getDisplays = function()
-	if isCP then
-		return natives.require("gui").getDisplays()
-	elseif isCC then
+	if isCC then
 		local displays = {natives.term.current(), natives.term.native()}
 		for k, v in pairs(natives.peripheral.getNames()) do
 			if natives.peripheral.getType(v) == "monitor" then
@@ -90,10 +87,9 @@ gui.getDefaultContext = function(term)
 end
 gui.getNativeContext = function(term)
 	term = term or gui.getDisplay(1)
-	if isCP then
-		return natives.getDefaultContext(term)
-	elseif isCC then
+	if isCC then
 		local ctx = gui.getContext(term, 0, 0, 0, 0)
+		ctx.INTERNALS2.isNative = true
 		ctx.drawPixel = function(x, y, color, char, fg)
 			checkInitialized(ctx)
 			
@@ -123,6 +119,9 @@ gui.getNativeContext = function(term)
 		ctx.update = function()
 			ctx.WIDTH, ctx.HEIGHT = term.getSize()
 		end
+		ctx.setAutoSize = function()
+			error("Cannot set autosize on native conext")
+		end
 		ctx.endDraw = function()
 			checkCanEndDraw(ctx)
 			term.setCursorPos(ctx.INTERNALS.pos.x, ctx.INTERNALS.pos.y)
@@ -132,6 +131,7 @@ gui.getNativeContext = function(term)
 		return ctx
 	elseif isOC then
 		local ctx = gui.getContext(term, 0, 0, 0, 0)
+		ctx.INTERNALS2.isNative = true
 		local gpu, addr = term.gpu, term.address
 		ctx.drawPixel = function(x, y, color, char, fg)
 			checkInitialized(ctx)
@@ -222,7 +222,10 @@ gui.getContext = function(parent, x, y, l, h)
 		parent = parent,
 		INTERNALS = {},
 		INTERNALS2 = {
+			isNative = false,
 			enableOptimizations = true,
+			useParentWidth = not l,
+			useParentHeight = not h,
 			xinverted = false,
 		},
 		CONFIG = {
@@ -264,7 +267,7 @@ end
 contextAPI.drawPixel = function(ctx, x, y, color, char, fg)
 	char = char and tostring(char)
 	x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
-	if (x<ctx.WIDTH) and (y<ctx.HEIGHT) then
+	if (x>0 and x<ctx.WIDTH) and (y>0 and y<ctx.HEIGHT) then
 		ctx.parent.drawPixel(ctx.position.x+x, ctx.position.y+y, color, char, fg)
 	end
 end

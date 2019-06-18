@@ -1,5 +1,5 @@
 --TODO: Support CPlat on other bios/OS
---TODO: Make CPlat yield during sleep in OC
+--TODO: Enable communication with CPlatParent instance stored in _G
 
 --App Info
 local APP = {
