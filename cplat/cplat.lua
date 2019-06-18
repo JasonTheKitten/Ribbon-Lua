@@ -24,6 +24,9 @@ cplat.getAppInfo = function()
     return APP
 end
 
+--OC/CC
+local isOC = not not pcall(require, "term")
+
 --Paths
 cplat.setPaths = function(paths)
     if not paths then
@@ -115,7 +118,7 @@ local function sleep(t)
 	local ev = cplat.require "environment"
 	--local ie = proc.getInterruptsEnabled()
 	--proc.setInterruptsEnabled(false)
-	local time = os.clock()+(t/((ev.is("OC") and 20) or 1))
+	local time = os.clock()+t
 	while os.clock()<time do
 		coroutine.yield()
 	end
@@ -125,6 +128,8 @@ local rawlen = rawlen or function(v)
     return #v
 end
 local dofile = dofile --TODO
+local mos = {}
+for k, v in pairs(os) do mos[k] = v end
 
 --Execution environment
 env._ENV = env
@@ -160,7 +165,7 @@ env.coroutine = coroutine
 env.debug = debug
 env.io = io
 env.math = math
-env.os = os
+env.os = mos
 env.string = string
 env.table = table
 
@@ -183,6 +188,14 @@ env.require = function(arg)
     --TODO: Require
 end
 --TODO: Package
+
+--Fix time
+if isOC then
+	local nc = os.clock
+	mos.clock = function()
+		return nc()*20
+	end
+end
 
 
 --Return functions

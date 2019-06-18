@@ -1,3 +1,5 @@
+--TODO: HTTP
+
 local cplat = require()
 local environment = cplat.require "environment"
 local util = cplat.require "util"
@@ -25,7 +27,7 @@ local charsStr =
 	"ZXCVBNM<>?:"..
 	"\t "
 	
-chars = util.stringToTable(charsStr, true)
+local chars = util.stringToTable(charsStr, true)
 
 
 local eq = {}
@@ -241,6 +243,90 @@ if isCC then
 			rawevent = e
 		})
 	end)
+	
+	--Mouse
+	process.registerEvent("mouse_click", function(e)
+		process.fireEvent("mouse_click", {
+			parent = process,
+			rawevent = e,
+			x = e[3],
+			y = e[4],
+			button = e[2],
+			display = 1
+		})
+	end)
+	process.registerEvent("monitor_touch", function(e)
+		local evd = {
+			parent = process,
+			rawevent = e,
+			x = e[3],
+			y = e[4],
+			button = 1,
+			display = nil
+		}
+		process.fireEvent("mouse_click", evd)
+		process.fireEvent("mouse_up", evd)
+	end)
+	process.registerEvent("mouse_up", function(e)
+		process.fireEvent("mouse_up", {
+			parent = process,
+			rawevent = e,
+			x = e[2],
+			y = e[3],
+			button = e[4],
+			display = nil
+		})
+	end)
+	process.registerEvent("mouse_drag", function(e)
+		process.fireEvent("mouse_drag", {
+			parent = process,
+			rawevent = e,
+			x = e[2],
+			y = e[3],
+			button = e[4],
+			display = nil
+		})
+	end)
+	process.registerEvent("mouse_scroll", function(e)
+		process.fireEvent("mouse_scroll", {
+			parent = process,
+			rawevent = e,
+			amount = e[2],
+			display = nil
+		})
+	end)
+	
+	--Inventory
+	process.registerEvent("turtle_inventory", function(e)
+		process.fireEvent("inventory_edit", {
+			parent = process,
+			rawevent = e,
+		})
+	end)
+	
+	--Redstone
+	process.registerEvent("redstone", function(e)
+		process.fireEvent("redstone_edit", {
+			parent = process,
+			rawevent = e,
+		})
+	end)
+	
+	--Device
+	process.registerEvent("peripheral", function(e)
+		process.fireEvent("device_connected", {
+			parent = process,
+			rawevent = e,
+			id = e[2]
+		})
+	end)
+	process.registerEvent("peripheral_detach", function(e)
+		process.fireEvent("device_removed", {
+			parent = process,
+			rawevent = e,
+			id = e[2]
+		})
+	end)
 else
 	--Keyboard
 	process.registerEvent("key_down", function(e)
@@ -286,6 +372,7 @@ else
 	
 	--Display
 	process.registerEvent("screen_resize", function(e)
+		--TODO: Include size
 		process.fireEvent("display_resize", {
 			parent = process,
 			rawevent = e
@@ -293,5 +380,74 @@ else
 	end)
 	
 	--Mouse
+	process.registerEvent("mouse_click", function(e)
+		process.fireEvent("mouse_click", {
+			parent = process,
+			rawevent = e,
+			x = e[2],
+			y = e[3],
+			button = e[4],
+			display = nil
+		})
+	end)
+	process.registerEvent("mouse_drop", function(e)
+		process.fireEvent("mouse_up", {
+			parent = process,
+			rawevent = e,
+			x = e[2],
+			y = e[3],
+			button = e[4],
+			display = nil
+		})
+	end)
+	process.registerEvent("drag", function(e)
+		process.fireEvent("mouse_drag", {
+			parent = process,
+			rawevent = e,
+			x = e[2],
+			y = e[3],
+			button = e[4],
+			display = nil
+		})
+	end)
+	process.registerEvent("scroll", function(e)
+		process.fireEvent("mouse_scroll", {
+			parent = process,
+			rawevent = e,
+			amount = e[5],
+			display = nil
+		})
+	end)
+	
+	--Inventory
+	process.registerEvent("inventory_changed", function(e)
+		process.fireEvent("inventory_edit", {
+			parent = process,
+			rawevent = e,
+		})
+	end)
+	
+	--Redstone
+	process.registerEvent("redstone_changed", function(e)
+		process.fireEvent("redstone_edit", {
+			parent = process,
+			rawevent = e,
+		})
+	end)
+	
+	--Device
+	process.registerEvent("component_added", function(e)
+		process.fireEvent("device_connected", {
+			parent = process,
+			rawevent = e,
+			id = e[2]
+		})
+	end)process.registerEvent("component_removed", function(e)
+		process.fireEvent("device_removed", {
+			parent = process,
+			rawevent = e,
+			id = e[2]
+		})
+	end)
 	
 end

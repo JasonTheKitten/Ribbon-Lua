@@ -2,6 +2,7 @@
 --TODO: Cool idea, keep a cursor and return it on draw functions
 --TODO: Thick Empty Rects
 --TODO: Co-ord bounce: checks coordinate locations of one context relative to another context
+--TODO: Use actual addresses
 
 local cplat = require()
 local environment = cplat.require "environment"
