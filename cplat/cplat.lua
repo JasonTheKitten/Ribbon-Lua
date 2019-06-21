@@ -119,23 +119,24 @@ local function loadfile(f, m, e)
     else return nloadfile(f, m, e)
     end
 end
+local rawlen = rawlen or function(v)
+    return #v
+end
+local dofile = dofile --TODO
+
+local mos = {}
+for k, v in pairs(os) do mos[k] = v end
 local function sleep(t)
 	local proc = cplat.require("process")
 	local ev = cplat.require "environment"
 	--local ie = proc.getInterruptsEnabled()
 	--proc.setInterruptsEnabled(false)
-	local time = os.clock()+t
-	while os.clock()<time do
+	local time = mos.clock()+t
+	while mos.clock()<time do
 		coroutine.yield()
 	end
 	--proc.setInterruptsEnabled(ie)
 end
-local rawlen = rawlen or function(v)
-    return #v
-end
-local dofile = dofile --TODO
-local mos = {}
-for k, v in pairs(os) do mos[k] = v end
 
 --Execution environment
 env._ENV = env
@@ -197,12 +198,8 @@ end
 
 --Fix time
 if isOC then
-	local nc = os.clock
-	mos.clock = function()
-		return nc()*20
-	end
+	mos.clock = require("computer").uptime
 end
-
 
 --Return functions
 return cplat
