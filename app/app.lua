@@ -24,12 +24,12 @@ local function draw(t, rst)
 		ctx.drawEmptyRect(0, 0, ctx.WIDTH, ctx.HEIGHT, COLORS.LIGHTBLUE, "%", COLORS.GREEN)
 		ctx.drawText(titlePosX, titlePosY, timerLabel, COLORS.PINK, COLORS.WHITE)
 	end
-	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, "0")
+	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, "X")
 	local timePadded = ctxu.align(timeW0, ctxu.ALIGN_CENTER, 5)
 	ctx.drawText(timePosX, timePosY, timePadded, COLORS.PINK, COLORS.WHITE)
 end
 
-draw(0, true)
+draw("", true)
 process.addEventListener("char", function(e)
 	if tonumber(e.char) then
 		ttime = ttime..e.char

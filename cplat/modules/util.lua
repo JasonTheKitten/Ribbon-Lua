@@ -1,3 +1,7 @@
+local cplat = require()
+
+local fs = cplat.require "filesystem"
+
 --TODO: util.reverse
 local util = ...
 
@@ -18,14 +22,137 @@ util.ipairs = function(tbl)
 	return ipairs(util.copy(tbl))
 end
 
-util.stringToTable = function(s, r)
-	local tbl = {}
+util.stringToTable = function(s, r, t)
+	t = t or {}
 	for i=1, #s do
 		if r then 
-			tbl[s:sub(i, i)] = i
+			t[s:sub(i, i)] = i
 		else
-			tbl[i] = s:sub(i, i)
+			t[i] = s:sub(i, i)
 		end
 	end
-	return tbl
+	return t
 end
+
+util.inf = function(f)
+	local ok, h = pcall(fs.open, f, "r")
+	if ok and h then
+		local c = h.readAll()
+		h.close()
+		return c
+	end
+end
+util.outf = function(f, c)
+	local ok, h = pcall(fs.open, f, "wb")
+	if ok and h then
+		h.write(c)
+		h.close()
+		return true
+	end
+end
+util.appf = function(f, c)
+	local ok, h = pcall(fs.open, f, "ab")
+	if ok and h then
+		h.write(c)
+		h.close()
+		return true
+	end
+end
+
+local q = "\""
+local serializeTable, serializeTableJSON
+local function formatString(str)
+	return "\""..
+		str:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("\f", "\\f"):gsub("\r", "\\r")
+	.."\""
+end
+local function formatValue(v, d)
+	d = not d
+	if type(v) == "string" then
+		return formatString(v)
+	elseif type(v) == "number" then
+		return tostring(v):gsub("inf", "1/0"):gsub("nan", "0/0")
+	elseif type(v) == "table" and d then
+		return serializeTable(v)
+	elseif v == util.EMPTY_ARRAY and not d then
+		return "[]"
+	elseif type(v) == "table" then
+		return serializeTableJSON(v)
+	elseif type(v) == "function" and d then
+		return "load("..formatString(string.dump(v))..")"
+	elseif type(v) == "thread" and d then
+		return "coroutine.create(function() end)"
+	elseif type(v) == "nil" and d then
+		return "nil"
+	elseif type(v) == "nil" then
+		return "undefined"
+	else
+		local ok, r = pcall(tostring, v)
+		return (ok and formatString(r)) or (d and "nil") or "undefined"
+	end
+end
+local sandbox = {
+	load = function(s) return load(s, "<chunk>", "tb", {}) end,
+	coroutine = {
+		create = coroutine.create,
+	},
+}
+
+serializeTable = function(d)
+	local tbl, r = "{", {}
+	for k, v in ipairs(d) do
+		r[k] = true
+		tbl=tbl..formatValue(v)..","
+	end
+	for k, v in pairs(d) do
+		if not r[k] then
+			tbl=tbl.."["..formatValue(k).."]="..formatValue(v)..","
+		end
+	end
+	return tbl.."}"
+end
+serializeTableJSON = function(d)
+	local a, r = (#d>0) or d[0], {[0] = true}
+	for k, v in ipairs(d) do
+		r[k] = true
+	end
+	for k, v in pairs(d) do
+		if not r[k] then
+			a = false
+			break
+		end
+	end
+	if a then
+		local tbl = "["
+		for i=0, #d do
+			tbl = tbl..formatValue(d[i], true)..","
+		end
+		return tbl.."]"
+	end
+	local tbl = "{"
+	for k, v in pairs(d) do
+		if not r[k] then
+			tbl=tbl.."["..formatValue(k, true).."]:"..formatValue(v, true)..","
+		end
+	end
+	return tbl.."}"
+end
+util.EMPTY_ARRAY = {}
+util.serialize = function(d)
+	return formatValue(d)
+end
+util.unserialize = function(d)
+	local ok, e = pcall(load, "return "..d, "<chunck>", "tb", sandbox)
+	if not (ok and e) then return end
+	ok, e = pcall(e)
+	if ok and e then return e end
+end
+util.serializeJSON = function(d)
+	return formatValue(d, true)
+end
+
+--TODO: Include a JSON parser
+
+util.serialise = util.serialize
+util.unserialise = util.unserialize
+util.serialiseJSON = util.serializeJSON

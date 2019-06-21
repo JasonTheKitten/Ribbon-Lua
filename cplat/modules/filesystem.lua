@@ -1,3 +1,4 @@
+--TODO: MOUNTING/LINKING/DISKS/FREESPACE/ETC
 local cplat = require()
 local environment = cplat.require "environment"
 
@@ -8,7 +9,7 @@ local isOC = environment.is("OC")
 
 local nfs = (isOC and natives.require("filesystem")) or (isCC and natives.fs)
 
-local filesystem = {}
+local filesystem = ...
 
 filesystem.exists = (isOC and nfs.exists) or (isCC and nfs.exists)
 filesystem.isDir = (isOC and nfs.isDirectory) or (isCC and nfs.isDir)
@@ -60,12 +61,11 @@ local handleMethods = {"close", "flush", "lines", "read", "setvbuf", "seek", "wr
 filesystem.open = function(file, mode)
 	if not mode then error("filemode not set", 2) end
     local mio = io.open("/"..file, mode)
+	if not mio then return false end
     local handle = {}
     for k, v in pairs(handleMethods) do 
-        if type(mio[v]) == "function" then
-			local fname=v
-            handle[v] = function(...) return mio[fname](mio, ...) end 
-        end
+		local fname=v
+		handle[v] = function(...) return mio[fname](mio, ...) end 
     end
     if handle.read then
         handle.readAll = function()
@@ -119,7 +119,3 @@ filesystem.move = function(f, d, re)
 	if not (ok or re) then error(err, 2) end
 	return ok, err
 end
-
---TODO: MOUNTING/LINKING/DISKS/FREESPACE/ETC
-
-return filesystem

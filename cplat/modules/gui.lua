@@ -1,4 +1,5 @@
 --TODO: Only support graphical and terminal applications
+--TODO: Blit
 --TODO: Cool idea, keep a cursor and return it on draw functions
 --TODO: Thick Empty Rects
 --TODO: Co-ord bounce: checks coordinate locations of one context relative to another context

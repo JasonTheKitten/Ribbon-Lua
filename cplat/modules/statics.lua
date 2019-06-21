@@ -80,7 +80,11 @@ keys.space = keys[" "]
 mstatics.keys = keys
 statics.KEYS = mstatics.keys
 
-local mouse = {}
-mstatics.mouse = mouse
+local mouse = {
+    MOUSE_LEFT = 1,
+    MOUSE_CENTER = 3,
+    MOUSE_RIGHT = 2
+}
 
+mstatics.mouse = mouse
 statics.MOUSE = mstatics.mouse

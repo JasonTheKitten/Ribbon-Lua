@@ -1,10 +1,12 @@
+--TODO: Reflect buffer using blit
+
 local cplat = require()
 
 local gui = cplat.require "gui"
 
 local bctx = ...
 
-bctx.wrapContext = function(ctx, proc)
+bctx.wrapContext = function(ctx, es)
 	if ctx.INTERNALS2.isNative then
 		error("A buffered context can not be created with a native context; Please use gui.getContext to wrap the native context.", 2)
 	end
@@ -48,28 +50,39 @@ bctx.wrapContext = function(ctx, proc)
 		return buffer
 	end
 	ctx.drawBuffer = function()
-	
+	   for y, row in pairs(buffer) do
+	       for x, pixel in pairs(buffer[y]) do
+	           if pixel.char then
+	               ctx.parent.drawPixel(
+	                   x+ctx.position.x, y+ctx.position.y,
+	                   pixel.background, pixel.char, pixel.foreground)
+	           end
+	       end
+	   end
 	end
 	
-	proc.addEventListener("mouse_click", function(e) 
-		local x = e.x-buffer.x
-		local y = e.y-buffer.y
-		if x<ctx.WIDTH and y<ctx.HEIGHT then
-			if buffer[y][x].onclick then
-				buffer[y][x].onclick({
-					x = x,
-					y = y,
-					button = e.button
-				})
-			end
-		end
-	end)
-	proc.addEventListener("mouse_up", function()
+	local function gmf(t)
+		return function(e)
+            local x = e.x-buffer.x
+    		local y = e.y-buffer.y
+    		if x<ctx.WIDTH and y<ctx.HEIGHT then
+    			if buffer[y] and buffer[y][x] and buffer[y][x][t] then
+    				buffer[y][x][t]({
+    					x = x,
+    					y = y,
+    					button = e.button
+    				})
+    			end
+    		end
+	   end
+	end
 	
-	end)
+	es.addEventListener("mouse_click", gmf("onclick"))
+	es.addEventListener("mouse_up", gmf("onrelease"))
+	es.addEventListener("mouse_drag", gmf("ondragover"))
 	
 	return ctx
 end
-bctx.getContext = function(p, x, y, l, h, process)
-	return bctx.wrapContext(gui.getContext(p, x, y, l, h))
+bctx.getContext = function(p, x, y, l, h, es)
+	return bctx.wrapContext(gui.getContext(p, x, y, l, h), es)
 end

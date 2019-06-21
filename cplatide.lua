@@ -3,7 +3,11 @@
 
 --App Info
 local APP = {
+	TITLE = "APPLICATION",
+	VERSION = "DEV v0.1.0 (Alpha)",
+	VERSIONRAW = {0, 1, 0},
 	TYPE = "GRAPHICAL",
+	
 	PATHS = {
 		APP = "${PATH}/app",
 		ASSETS = "${PATH}/assets",
@@ -13,18 +17,22 @@ local APP = {
 		ROOT = "/",
 		
 		DEBUGFILE = "debug.log",
+		CRASHHANDLER = "${PATH}/app/crash.lua",
 		
 		PATH = nil,
 		CPLAT = nil,
 	},
+	
 	CONTEXT = nil,
-	TITLE = "APPLICATION",
+	PATHRESOLUTIONTRIES = 50,
+	PERMISSIONS = {}, --Not used by CPlat
 }
 
 --Configs
 --#@Configs
 
 --Glue
+local cplat
 local baseError = "App failed to launch!"
 local results = {pcall(function(...)
 	--Alt require
@@ -68,11 +76,12 @@ local results = {pcall(function(...)
 	end
 	
 	--Load app
+	local err
 	local corePath = paths["CPLAT"].."/cplat.lua"
-	local cplat, err = loadfile(corePath)
+	cplat, err = loadfile(corePath)
 	if err then
 		baseError = "Corrupt or Missing File!"
-		error("FILE: "..corePath.."\nERROR: "..err)
+		error("FILE: "..corePath.."\nROR: "..err)
 	end
 	
 	--Setup CPlat
@@ -82,10 +91,12 @@ local results = {pcall(function(...)
 	--Setup App
 	cplat.setAppInfo(APP)
 	
+	--Setup debug
+	cplat.require("debugger").setDebugFile(APP.PATHS.DEBUGFILE)
+	
 	--Execute app
 	baseError = "Application crashed!"
 	return cplat.execute(APP.PATHS.CMD, ...)
-	
 end, ...)}
 
 --Error checking
@@ -93,7 +104,17 @@ if not results[1] then
     baseError = (type(baseError) == "string" and baseError) or 
         "A fatal error has occured!"
 	local err = results[2] or ""
-	error(baseError.."\n"..err, -1)
+	local ok = false
+	if type(cplat) == "table" then
+		ok = pcall(cplat.execute, APP.PATHS.CRASHHANDLER, baseError, err)
+	end
+	if not ok then 
+		pcall(function()
+			cplat.require("debugger").error(baseError)
+			cplat.require("debugger").error(err)
+		end)
+		error(baseError.."\n"..err, -1)
+	end
 end
 
 --Return results

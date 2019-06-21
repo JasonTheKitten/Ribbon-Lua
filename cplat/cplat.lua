@@ -1,5 +1,3 @@
---Don't really need OOP here
-
 --CPlat Core
 local cplat = {}
 
@@ -42,11 +40,15 @@ cplat.setPaths = function(paths)
     end
 end
 cplat.resolvePath = function(path, ftable, maxTries)
-	maxTries = maxTries or 50 --TODO: Less primitive default, maybe something inside app configs
+    if path:sub(1, 1) == "!" then return path:sub(2, #path) end
+    if path:sub(1, 1) == "#" then path = path:sub(2, #path) end
+    
+	maxTries = maxTries or APP.PATHRESOLUTIONTRIES or 50
 
     local pathreps = {}
     for k, v in pairs(APP.PATHS) do pathreps[k] = v end
     for k, v in pairs(ftable or {}) do pathreps[k] = v end
+    
 	--We must resolve multiple times, as some paths may reference others
 	local oldpath, tries = "", 0
 	while oldpath~=path do
@@ -55,7 +57,7 @@ cplat.resolvePath = function(path, ftable, maxTries)
 		oldpath = path
 		for k, v in pairs(pathreps) do path = path:gsub("${"..k.."}", v) end
 	end
-    return path
+    return path:gsub("$#", "$")
 end
 
 --Require CPlat modules
@@ -82,6 +84,10 @@ end
 
 --Execute
 cplat.execute = function(path, ...)
+	--Cache certain modules
+	cplat.require("cplatos")
+
+	--Execute
 	if not path then error("No path supplied", 2) end
 	local func, err = env.loadfile(cplat.resolvePath(path), "t", env)
 	if not func then error(err, 2) end

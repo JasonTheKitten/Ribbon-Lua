@@ -2,11 +2,10 @@ local cplat = require()
 
 local debugger = ...
 
+local debugFile
 local function put(data)
-	local dbgf = "${DEBUGFILE}"
-	local res = cplat.resolvePath(dbgf)
-	if res ~= dbgf then
-		local h, e = io.open(res, "a")
+	if debugFile then
+		local h, e = io.open(debugFile, "a")
 		if h then
 			h:write(data.."\n")
 			h:close()
@@ -28,4 +27,11 @@ end
 
 debugger.log = function(data)
 	put("[LOG]: "..data)
+end
+
+debugger.setDebugFile = function(path)
+    debugFile = cplat.resolvePath(path)
+end
+debugger.getDebugFile = function()
+    return debugFile
 end
