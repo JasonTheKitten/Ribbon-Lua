@@ -51,8 +51,7 @@ local results = {pcall(function(...)
 	
 	--Set shell name
 	if multishell then
-		sleep(0)
-		multishell.setTitle(multishell.getFocus(), APP.TITLE)
+		multishell.setTitle(multishell.getCurrent(), APP.TITLE)
 	end
 	
 	--Config fallback

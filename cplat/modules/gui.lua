@@ -1,9 +1,7 @@
---TODO: Only support graphical and terminal applications
+--TODO: Only support graphical and hybrid applications
 --TODO: Blit
 --TODO: Cool idea, keep a cursor and return it on draw functions
---TODO: Thick Empty Rects
 --TODO: Co-ord bounce: checks coordinate locations of one context relative to another context
---TODO: Use actual addresses
 
 local cplat = require()
 local environment = cplat.require "environment"
@@ -19,6 +17,8 @@ local defaultContext = cplat.getAppInfo().CONTEXT
 local gui = ...
 local contextAPI = {}
 local drawFunctions = {}
+
+local null_ref, term_current, term_native = {}, {}, {}
 
 local function checkInitialized(context)
 	if not context.INTERNALS.drawing then
@@ -39,56 +39,74 @@ end
 gui.getDisplay = function(id)
 	return gui.getDisplays()[id or 1]
 end
+local displays, displays2 = {}, {}
+if isCC then displays = {term_current, term_native} end
+local function putDisplay(d)
+	if not displays2[d] then
+		table.insert(displays, d)
+		displays2[d] = true
+	end
+end
 gui.getDisplays = function()
 	if isCC then
-		local displays = {natives.term.current(), natives.term.native()}
 		for k, v in pairs(natives.peripheral.getNames()) do
-			if natives.peripheral.getType(v) == "monitor" then
-				table.insert(displays, natives.peripheral.wrap(v))
+			if not displays2[v] and natives.peripheral.getType(v) == "monitor" then
+				table.insert(displays, v)
+				displays2[v] = true
 			end
 		end
 		return displays
 	elseif isOC then
-		local screens = {}
-		local dumbHandle = {
-			getSize = function() return 0, 0 end,
-			getSimulated = function() return true end
-		}
 		local component = natives.require("component")
 		local gpu = component.proxy(component.list("gpu", true)())
-		if not gpu then
-			screens[1] = dumbHandle
-			return screens
+		if not gpu then 
+			displays[1] = null_ref
+			return displays
 		end
-		local function addAddr(addr)
-			table.insert(screens, {
-				getSize = function() return gpu.getResolution() end,
-				getSimulated = function() return false end,
-				address = addr,
-				gpu = gpu
-			})
-		end
-		if gpu.getScreen() then addAddr(gpu.getScreen()) end
+		
+		local s = gpu.getScreen()
+		displays[1] = s or null_ref --Do not register with displays2
 		for addr in component.list("screen") do
-			addAddr(addr)
+			putDisplay(addr)
 		end
-		screens[1] = screens[1] or dumbHandle
-		return screens
+		return displays
 	end
 end
 gui.getDefaultDisplayID = function()
 	return 1
 end
-gui.getTotalMDisplays = function()
+gui.getTotalDisplays = function()
 	return #gui.getDisplays()
+end
+gui.checkDisplayAvailable = function(id)
+
 end
 
 gui.getDefaultContext = function(term)
 	return defaultContext or gui.getNativeContext(term)
 end
 gui.getNativeContext = function(term)
-	term = term or gui.getDisplay(1)
+	term = term or gui.getDisplay(gui.getDefaultDisplayID())
 	if isCC then
+		local dumbTerm = { --This will need updated to track stuff later on
+			setCursorPos = function() end,
+			setBackgroundColor = function() end,
+			setTextColor = function() end,
+			getCursorPos = function() return 0, 0 end,
+			getBackgroundColor = function() return 0 end,
+			getTextColor = function() return 2^15 end,
+			write = function() end,
+		}
+		xpcall(function()
+			if term == term_current then
+				term = natives.term.current()
+			elseif term == term_native then
+				term = natives.term.native()
+			elseif term then
+				term = natives.peripheral.wrap(term)
+			end
+		end, function() term = dumbTerm end)
+	
 		local ctx = gui.getContext(term, 0, 0, 0, 0)
 		ctx.INTERNALS2.isNative = true
 		ctx.drawPixel = function(x, y, color, char, fg)
@@ -131,6 +149,23 @@ gui.getNativeContext = function(term)
 		end
 		return ctx
 	elseif isOC then
+		local dumbTerm = {
+			getSize = function() return 0, 0 end,
+			getSimulated = function() return true end
+		}
+		
+		xpcall(function()
+			assert(term~=null_ref)
+			local component = natives.require("component")
+			local gpu = assert(component.proxy(component.list("gpu", true)()))
+			term = { --TODO: Handle removed gpu/monitor
+				getSize = function() return gpu.getResolution() end,
+				getSimulated = function() return false end,
+				address = term,
+				gpu = gpu
+			}
+		end, function() term = dumbTerm end)
+		
 		local ctx = gui.getContext(term, 0, 0, 0, 0)
 		ctx.INTERNALS2.isNative = true
 		local gpu, addr = term.gpu, term.address
@@ -167,7 +202,7 @@ gui.getNativeContext = function(term)
 		end
 		ctx.startDraw = function()
 			checkCanStartDraw(ctx)
-			if term.getSimulated() then 
+			if term.getSimulated() then
 				ctx.INTERNALS.drawing = true 
 				return 
 			end
@@ -197,7 +232,7 @@ gui.getNativeContext = function(term)
 			checkCanEndDraw(ctx)
 			ctx.INTERNALS.drawing = false
 			if term.getSimulated() then return end
-			if shouldBind then gpu.bind(ctx.INTERNALS.screen, false) end
+			gpu.bind(ctx.INTERNALS.screen, false)
 			gpu.setDepth(ctx.INTERNALS.depth)
 			gpu.setBackground(ctx.INTERNALS.theme.bg)
 			gpu.setForeground(ctx.INTERNALS.theme.fg)

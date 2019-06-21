@@ -54,15 +54,15 @@ bctx.wrapContext = function(ctx, es)
 	       for x, pixel in pairs(buffer[y]) do
 	           if pixel.char then
 	               ctx.parent.drawPixel(
-	                   x+ctx.position.x, y+ctx.position.y,
-	                   pixel.background, pixel.char, pixel.foreground)
+						x+ctx.position.x, y+ctx.position.y,
+						pixel.background, pixel.char, pixel.foreground)
 	           end
 	       end
 	   end
 	end
 	
-	local function gmf(t)
-		return function(e)
+	local function linkT(e, t)
+		es.addEventListener(e, function(e)
             local x = e.x-buffer.x
     		local y = e.y-buffer.y
     		if x<ctx.WIDTH and y<ctx.HEIGHT then
@@ -74,12 +74,12 @@ bctx.wrapContext = function(ctx, es)
     				})
     			end
     		end
-	   end
+	   end)
 	end
 	
-	es.addEventListener("mouse_click", gmf("onclick"))
-	es.addEventListener("mouse_up", gmf("onrelease"))
-	es.addEventListener("mouse_drag", gmf("ondragover"))
+	linkT("mouse_click", "onclick")
+	linkT("mouse_up", "onrelease")
+	linkT("mouse_drag", "ondragover")
 	
 	return ctx
 end

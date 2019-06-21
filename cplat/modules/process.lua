@@ -32,10 +32,8 @@ local chars = util.stringToTable(charsStr, true)
 local eq = {}
 process.execute = function(f, ...)
 	local cid = tostring(cplat):gsub("table: ", "")
-	if isCC then natives.os.queueEvent("q_bottom", cid) end
-	local ok, err
 	local c = coroutine.create(f)
-	ok, err = coroutine.resume(c, ...)
+	local ok, err = coroutine.resume(c, ...)
 	local catchEvents
 	local function resume()
 		for i=1, #eq do
@@ -51,13 +49,15 @@ process.execute = function(f, ...)
 	if isCC then
 		catchEvents = function()
 			eq = {}
+			natives.os.queueEvent("q_bottom", cid)
+			local tid = natives.os.startTimer(.05)
 			local e = {coroutine.yield()}
-			while (e[1]~="q_bottom" and e[2]~=cid) do
+			while not ((e[1]=="q_bottom" and e[2]==cid) or (e[1] == "timer" and e[2] == tid)) do
 				if e[1] == "terminate" then error("User terminated application", -1) end
 				table.insert(eq, 1, e)
 				e = {coroutine.yield()}
 			end
-			natives.os.queueEvent("q_bottom", tostring(cplat):gsub("table: ", ""))
+			natives.os.cancelTimer(tid)
 		end
 	elseif isOC then
 		catchEvents = function()

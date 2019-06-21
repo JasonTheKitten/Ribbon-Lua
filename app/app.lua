@@ -15,7 +15,7 @@ ctx.startDraw()
 local timerLabel = " CPlat Timer "
 local ttime = ""
 
-local function draw(t, rst)
+local function draw(t, rst, c)
 	local titlePosX, titlePosY = ctxu.calcPos(ctx, 0, .5, 0, .3, #timerLabel, -.5, 1, 0)
 	local timePosX, timePosY = ctxu.calcPos(ctx, 0, .5, 0, .6, 5, -.5, 1, 0)
 	
@@ -24,16 +24,16 @@ local function draw(t, rst)
 		ctx.drawEmptyRect(0, 0, ctx.WIDTH, ctx.HEIGHT, COLORS.LIGHTBLUE, "%", COLORS.GREEN)
 		ctx.drawText(titlePosX, titlePosY, timerLabel, COLORS.PINK, COLORS.WHITE)
 	end
-	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, "X")
+	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, c or "0")
 	local timePadded = ctxu.align(timeW0, ctxu.ALIGN_CENTER, 5)
 	ctx.drawText(timePosX, timePosY, timePadded, COLORS.PINK, COLORS.WHITE)
 end
 
-draw("", true)
+draw("", true, "X")
 process.addEventListener("char", function(e)
-	if tonumber(e.char) then
+	if ("1234567890"):find(e.char) then
 		ttime = ttime..e.char
-		draw(ttime)
+		draw(ttime, nil, "X")
 		if #ttime == 3 then
 			process.setInterruptsEnabled(false)
 		end
