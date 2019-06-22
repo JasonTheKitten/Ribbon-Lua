@@ -124,6 +124,25 @@ gui.getNativeContext = function(term)
 			term.setCursorPos(x+1, y+1)
 			term.write(char or " ")
 		end
+		ctx.blit = function(x, y, str, bstr, fstr)
+			term.setCursorPos(x+1, y+1)
+			local built1, built2, built3 = "", "", ""
+			while #str>0 do
+				if not tonumber(bstr:sub(1, 1), 16) then
+					local x, y = term.getCursorPos()
+					term.setCursorPos(x+1, y)
+				else
+					built1 = built1..str:sub(1, 1)
+					built2 = built2..bstr:sub(1, 1)
+					built3 = built3..fstr:sub(1, 1)
+				end
+				str, bstr, fstr = str:sub(2), bstr:sub(2), fstr:sub(2)
+				if not tonumber(bstr:sub(1, 1), 16) then
+					term.blit(built1, built3:lower(), built2:lower())
+					built1, built2, built3 = "","",""
+				end
+			end
+		end
 		ctx.startDraw = function()
 			checkCanStartDraw(ctx)
 			local ox, oy = term.getCursorPos()
@@ -251,9 +270,9 @@ gui.setDefaultContext = function(ctx)
 end
 gui.getContext = function(parent, x, y, l, h)
 	local context = {
-		position = {x=x,y=y},
-		WIDTH = l,
-		HEIGHT = h,
+		position = {x=x or 0,y=y or 0},
+		WIDTH = l or (parent and parent.WIDTH),
+		HEIGHT = h or (parent and parent.HEIGHT),
 		hasColor = true,
 		parent = parent,
 		INTERNALS = {},
@@ -303,7 +322,7 @@ end
 contextAPI.drawPixel = function(ctx, x, y, color, char, fg)
 	char = char and tostring(char)
 	x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
-	if (x>0 and x<ctx.WIDTH) and (y>0 and y<ctx.HEIGHT) then
+	if (x>0 and (not ctx.WIDTH or x<ctx.WIDTH)) and (y>0 and (not ctx.HEIGHT or y<ctx.HEIGHT)) then
 		ctx.parent.drawPixel(ctx.position.x+x, ctx.position.y+y, color, char, fg)
 	end
 end
@@ -370,6 +389,24 @@ contextAPI.drawTextBox = function(ctx, x, y, text, color, fg, meta)
 	ctx.drawFilledRect(x, y, meta.width, meta.height, color, meta.fillChar, meta.fillTextColor)
 	ctx.drawText(x, y, text, color, fg)
 end
+contextAPI.blit = function(ctx, x, y, str, bstr, fstr)
+	if ctx.enableOptimizations then
+		if y>ctx.HEIGHT then return end
+		str = str:sub(1, ctx.WIDTH-x)
+		bstr = bstr:sub(1, ctx.WIDTH-x)
+		fstr = fstr:sub(1, ctx.WIDTH-x)
+		ctx.parent.blit(x+ctx.position.x, y+ctx.position.y, str, bstr, fstr)
+	else
+		fstr = fstr:gsub(" ", "F")
+		for i=1, #str do
+			if bstr:sub(i, i) ~= " " then
+				local bg = tonumber(bstr:sub(i,i), 16) or 0
+				local fg = tonumber(fstr:sub(i,i), 16) or 15
+				ctx.drawPixel(x+i-1, y, bg, str:sub(i, i), fg)
+			end
+		end
+	end
+end
 contextAPI.setColors = function(ctx, color, fg)
 	ctx.defaultBackgroundColor = color
 	ctx.defaultTextColor = fg
@@ -382,6 +419,11 @@ contextAPI.setBackgroundColor = function(ctx, color)
 end
 
 for k, v in pairs(contextAPI) do drawFunctions[k] = v end
+
+contextAPI.update = function(ctx)
+	ctx.WIDTH = (ctx.INTERNALS2.useParentWidth and ctx.parent and ctx.parent.WIDTH) or ctx.WIDTH
+	ctx.HEIGHT = (ctx.INTERNALS2.useParentHeight and ctx.parent and ctx.parent.HEIGHT) or ctx.HEIGHT
+end
 
 contextAPI.invertX = function(ctx)
 	ctx.INTERNALS2.xinverted = not ctx.INTERNALS2.xinverted
