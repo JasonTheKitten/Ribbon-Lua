@@ -57,7 +57,7 @@ cplat.resolvePath = function(path, ftable, maxTries)
 		oldpath = path
 		for k, v in pairs(pathreps) do path = path:gsub("${"..k.."}", v) end
 	end
-    return path:gsub("$#", "$")
+    return "/"..path:gsub("$#", "$")
 end
 
 --Require CPlat modules

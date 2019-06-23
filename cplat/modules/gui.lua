@@ -95,6 +95,7 @@ gui.getNativeContext = function(term)
 			getCursorPos = function() return 0, 0 end,
 			getBackgroundColor = function() return 0 end,
 			getTextColor = function() return 2^15 end,
+			isColor = function() return false end,
 			write = function() end,
 		}
 		xpcall(function()
@@ -118,8 +119,10 @@ gui.getNativeContext = function(term)
 			
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
 			
-			term.setBackgroundColor(2^(color or ctx.CONFIG.defaultBackgroundColor))
-			term.setTextColor(2^(fg or ctx.CONFIG.defaultTextColor))
+			if ctx.INTERNALS2.isColor then
+				term.setBackgroundColor(2^(color or ctx.CONFIG.defaultBackgroundColor))
+				term.setTextColor(2^(fg or ctx.CONFIG.defaultTextColor))
+			end
 			
 			term.setCursorPos(x+1, y+1)
 			term.write(char or " ")
@@ -156,6 +159,7 @@ gui.getNativeContext = function(term)
 		end
 		ctx.update = function()
 			ctx.WIDTH, ctx.HEIGHT = term.getSize()
+			ctx.isColor = ctx.INTERNALS2.enableColor and term.isColor()
 		end
 		ctx.setAutoSize = function()
 			error("Cannot set autosize on native conext")
@@ -163,8 +167,10 @@ gui.getNativeContext = function(term)
 		ctx.endDraw = function()
 			checkCanEndDraw(ctx)
 			term.setCursorPos(ctx.INTERNALS.pos.x, ctx.INTERNALS.pos.y)
-			term.setBackgroundColor(ctx.INTERNALS.theme.bg)
-			term.setTextColor(ctx.INTERNALS.theme.fg)
+			if ctx.INTERNALS2.isColor then
+				term.setBackgroundColor(ctx.INTERNALS.theme.bg)
+				term.setTextColor(ctx.INTERNALS.theme.fg)
+			end
 		end
 		return ctx
 	elseif isOC then
@@ -198,8 +204,10 @@ gui.getNativeContext = function(term)
 			
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
 			
-			gpu.setBackground(color or ctx.CONFIG.defaultBackgroundColor, true)
-			gpu.setForeground(fg or ctx.CONFIG.defaultTextColor, true)
+			if ctx.INTERNALS2.isColor then
+				gpu.setBackground(color or ctx.CONFIG.defaultBackgroundColor, true)
+				gpu.setForeground(fg or ctx.CONFIG.defaultTextColor, true)
+			end
 			gpu.set(x+1, y+1, char or " ")
 		end
 		ctx.drawFilledRect = function(x, y, l, h, color, char, fg)
@@ -215,9 +223,39 @@ gui.getNativeContext = function(term)
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-l) or x
 			
 			
-			gpu.setBackground(color or ctx.CONFIG.defaultBackgroundColor, true)
-			gpu.setForeground(fg or ctx.CONFIG.defaultTextColor, true)
+			if ctx.INTERNALS2.isColor then
+				gpu.setBackground(color or ctx.CONFIG.defaultBackgroundColor, true)
+				gpu.setForeground(fg or ctx.CONFIG.defaultTextColor, true)
+			end
 			gpu.fill(x+1, y+1, l, h, char or " ")
+		end
+		ctx.blit = function(x, y, str, bstr, fstr)
+			checkInitialized(ctx)
+			if term.getSimulated() then return end
+			
+			local builtstr, bcol, fcol = "", "", ""
+			local ni = 0
+			local function blitIf()
+				local nbc, nfc = bstr:sub(1, 1), fstr:sub(1, 1)
+				if nbc~=bcol or nfc~=fcol then
+					if bcol and (bcol~=" ") and (bcol~="") then
+						if ctx.INTERNALS2.isColor then
+							gpu.setBackground(tonumber(bcol, 16) or 0, true)
+							gpu.setForeground(tonumber(fcol, 16) or 15, true)
+						end
+						gpu.set(x+ni+1, y+1, builtstr)
+					end
+					ni = ni+#builtstr
+					builtstr, bcol, fcol = "", nbc, nfc
+				end
+			end
+			while #str>0 do
+				blitIf()
+				builtstr = builtstr..str:sub(1, 1)
+				
+				str, bstr, fstr = str:sub(2), bstr:sub(2), fstr:sub(2)
+			end
+			blitIf()
 		end
 		ctx.startDraw = function()
 			checkCanStartDraw(ctx)
@@ -233,8 +271,6 @@ gui.getNativeContext = function(term)
 			local shouldBind = addr~=oscreen
 			if shouldBind then gpu.bind(addr, false) end
 			
-			gpu.setDepth(4) --TODO: What if depth "4" is not supported!? Then what!
-			
 			ctx.INTERNALS = {
 				drawing=true,
 				depth = depth,
@@ -246,6 +282,7 @@ gui.getNativeContext = function(term)
 		end
 		ctx.update = function()
 			ctx.WIDTH, ctx.HEIGHT = term.getSize()
+			ctx.INTERNALS2.isColor = ctx.INTERNALS2.enableColor and pcall(gpu.setDepth, 4)
 		end
 		ctx.endDraw = function()
 			checkCanEndDraw(ctx)
@@ -253,8 +290,10 @@ gui.getNativeContext = function(term)
 			if term.getSimulated() then return end
 			gpu.bind(ctx.INTERNALS.screen, false)
 			gpu.setDepth(ctx.INTERNALS.depth)
-			gpu.setBackground(ctx.INTERNALS.theme.bg)
-			gpu.setForeground(ctx.INTERNALS.theme.fg)
+			if ctx.INTERNALS2.isColor then
+				gpu.setBackground(ctx.INTERNALS.theme.bg)
+				gpu.setForeground(ctx.INTERNALS.theme.fg)
+			end
 		end
 		return ctx
 	end
@@ -279,6 +318,7 @@ gui.getContext = function(parent, x, y, l, h)
 		INTERNALS2 = {
 			isNative = false,
 			enableOptimizations = true,
+			enableColor = true,
 			useParentWidth = not l,
 			useParentHeight = not h,
 			xinverted = false,
@@ -418,11 +458,16 @@ contextAPI.setBackgroundColor = function(ctx, color)
 	ctx.defaultBackgroundColor = color
 end
 
+contextAPI.isColor = function(ctx)
+	return ctx.INTERNALS2.isColor
+end
+
 for k, v in pairs(contextAPI) do drawFunctions[k] = v end
 
 contextAPI.update = function(ctx)
 	ctx.WIDTH = (ctx.INTERNALS2.useParentWidth and ctx.parent and ctx.parent.WIDTH) or ctx.WIDTH
 	ctx.HEIGHT = (ctx.INTERNALS2.useParentHeight and ctx.parent and ctx.parent.HEIGHT) or ctx.HEIGHT
+	ctx.INTERNALS2.isColor = ctx.parent.INTERNALS2.isColor and ctx.INTERNALS2.enableColor
 end
 
 contextAPI.invertX = function(ctx)

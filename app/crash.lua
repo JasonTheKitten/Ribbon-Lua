@@ -1,0 +1,3 @@
+local err1, err2 = ...
+print(err1)
+print(err2)
