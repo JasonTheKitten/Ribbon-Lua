@@ -1,3 +1,5 @@
+local debugger = require().require "debugger"
+
 --Note that this file also handles some string manipulation
 local contextutils = ...
 
@@ -17,9 +19,10 @@ contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph)
 		oy = h*oph
 	end
 	ax, ay, px, py = ax or 0, ay or 0, px or 0, py or 0
+	debugger.info("ctx.HEIGHT="..tostring(ctx.HEIGHT))
 	return 
-		math.floor(ax+(ctx.WIDTH or ctx.PREFERRED_WIDTH)*px+ol), 
-		math.floor(ay+(ctx.HEIGHT or ctx.PREFERRED_HEIGHT)*py+oy)
+		math.floor(ax+ctx.WIDTH*px+ol), 
+		math.floor(ay+ctx.HEIGHT*py+oy)
 end
 
 --String Lib

@@ -184,8 +184,8 @@ gui.getNativeContext = function(term)
 			local component = natives.require("component")
 			local gpu = assert(component.proxy(component.list("gpu", true)()))
 			term = { --TODO: Handle removed gpu/monitor
-				getSize = function() return gpu.getResolution() end,
-				getSimulated = function() return false end,
+				getSize = function() return gpu.getViewport() end,
+				getSimulated = function() return not gpu or not gpu.getScreen() end,
 				address = term,
 				gpu = gpu
 			}
@@ -281,15 +281,17 @@ gui.getNativeContext = function(term)
 			ctx.update()
 		end
 		ctx.update = function()
+			if term.getSimulated() then return end
 			ctx.WIDTH, ctx.HEIGHT = term.getSize()
 			ctx.INTERNALS2.isColor = ctx.INTERNALS2.enableColor and pcall(gpu.setDepth, 4)
 		end
 		ctx.endDraw = function()
 			checkCanEndDraw(ctx)
 			ctx.INTERNALS.drawing = false
+
 			if term.getSimulated() then return end
 			gpu.bind(ctx.INTERNALS.screen, false)
-			gpu.setDepth(ctx.INTERNALS.depth)
+			pcall(setDepth, ctx.INTERNALS.depth)
 			if ctx.INTERNALS2.isColor then
 				gpu.setBackground(ctx.INTERNALS.theme.bg)
 				gpu.setForeground(ctx.INTERNALS.theme.fg)
