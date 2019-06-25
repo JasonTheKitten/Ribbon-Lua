@@ -1,4 +1,4 @@
---TODO: Reflect buffer using blit
+--TODO: Add a Z buffer
 --TODO: Scroll
 
 local cplat = require()
@@ -67,43 +67,34 @@ bctx.wrapContext = function(ctx, es)
 		return buffer
 	end
 	ctx.drawBuffer = function()
-		for y=0, ctx.HEIGHT do
+		for y=ctx.scroll.y, ctx.HEIGHT+ctx.scroll.y-1 do
 			local str, bstr, fstr = "", "", ""
 			local bits = "0123456789ABCDEF"
-			for x=0, ctx.WIDTH do
+			for x=ctx.scroll.x, ctx.WIDTH-1+ctx.scroll.x do
 				local pixel = (buffer[y] and buffer[y][x]) or {}
 				if pixel.char then
 					str=str..pixel.char
 					bstr=bstr..bits:sub(pixel.background+1, pixel.background+1)
 					fstr=fstr..bits:sub(pixel.foreground+1, pixel.foreground+1)
-					--[[ctx.parent.drawPixel(
-						x+ctx.position.x, y+ctx.position.y,
-						pixel.background, pixel.char, pixel.foreground)]]
 				elseif contextColor then
 					str=str.." "
 					bstr=bstr..bits:sub(contextColor+1, contextColor+1)
 					fstr=fstr.." "
-					--[[ctx.parent.drawPixel(
-						x+ctx.position.x, y+ctx.position.y,
-						contextColor, " ", 15)]]
 				else
 					str=str.." "
 					bstr=bstr.." "
 					fstr=fstr.." "
 				end
 			end
-			str = str:sub(1, ctx.WIDTH)
-			bstr = bstr:sub(1, ctx.WIDTH)
-			fstr = fstr:sub(1, ctx.WIDTH)
-			ctx.parent.blit(ctx.position.x, ctx.position.y+y, str, bstr, fstr)
+			ctx.parent.blit(ctx.position.x, ctx.position.y+y-ctx.scroll.y, str, bstr, fstr)
 		end
 	end
 	
 	local function linkT(e, t)
 		es.addEventListener(e, function(e)
-            local x = e.x-buffer.x
-    		local y = e.y-buffer.y
-    		if x<ctx.WIDTH and y<ctx.HEIGHT then
+            local x = e.x-ctx.position.x-ctx.scroll.x
+    		local y = e.y-ctx.position.y-ctx.scroll.y
+    		if x>=0 and x<ctx.WIDTH and y>=0 and y<ctx.HEIGHT then
     			if buffer[y] and buffer[y][x] and buffer[y][x][t] then
     				buffer[y][x][t]({
     					x = x,

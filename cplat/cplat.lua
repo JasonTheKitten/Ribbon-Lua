@@ -1,6 +1,11 @@
 --CPlat Core
 local cplat = {}
 
+--Compatibility
+local require = require or function()
+	error("Require is not supported")
+end
+
 --Execution environment header
 local env = {}
 

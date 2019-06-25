@@ -31,13 +31,13 @@ local function draw(rst)
 		ctx.drawEmptyRect(0, 0, ctx.WIDTH or ctx.PREFERRED_WIDTH, ctx.HEIGHT or ctx.PREFERRED_HEIGHT, COLORS.LIGHTBLUE, "%", COLORS.GREEN)
 		ctx.drawText(titlePosX, titlePosY, timerLabel, COLORS.PINK, COLORS.WHITE)
 	end
-	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, (rst and "0") or "0")
+	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, (rst and "X") or "0")
 	local timePadded = ctxu.align(timeW0, ctxu.ALIGN_CENTER, 5)
 	ctx.drawText(timePosX, timePosY, timePadded, COLORS.PINK, COLORS.WHITE)
 	
 	ctx.drawBuffer()
 end
-process.addEventListener("display_resized", function()draw(true)end)
+process.addEventListener("display_resize", function()draw(true)end)
 process.addEventListener("device_connected", function()draw(true)end)
 
 draw(true)
@@ -60,6 +60,7 @@ sleep(1)
 for i=0, tonumber(ttime) do
 	t = i
 	draw()
+	ctx.adjustScroll(1, 1)
 	sleep(1)
 	i=i+1
 end

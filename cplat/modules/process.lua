@@ -1,3 +1,6 @@
+--Thank you @LDDestroier for getting workspace to work space with CPlat!
+--Thank you @Justyn for the alternate code for the `char` event in OC.
+
 --TODO: HTTP
 
 local cplat = require()
@@ -14,20 +17,6 @@ local process = ...
 local eventregister = {}
 local backgroundscripts = {}
 local eventsystems = {}
-
-local charsStr =
-	"`1234567890-="..
-	"qwertyuiop[]\\"..
-	"asdfghjkl;'"..
-	"zxcvbnm,./"..
-	"~!@#$%^&*()_+"..
-	"QWERTYUIOP{}|"..
-	"ASDFGHJKL:\""..
-	"ZXCVBNM<>?:"..
-	"\t "
-	
-local chars = util.stringToTable(charsStr, true)
-
 
 local eq = {}
 process.execute = function(f, ...)
@@ -237,6 +226,12 @@ if isCC then
 			rawevent = e
 		})
 	end)
+	process.registerEvent("monitor_resize", function(e)
+		process.fireEvent("display_resize", {
+			parent = process,
+			rawevent = e
+		})
+	end)
 	
 	--Mouse
 	process.registerEvent("mouse_click", function(e)
@@ -329,7 +324,7 @@ else
 			code = e[4],
 			rawevent = e
 		})
-		if chars[string.char(e[3])] then
+		if e[3]>31 and e[3]<=255 then
 			process.fireEvent("char", {
 				parent = process,
 				char = string.char(e[3]),

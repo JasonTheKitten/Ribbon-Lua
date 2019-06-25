@@ -1,11 +1,11 @@
 --TODO: Only support graphical and hybrid applications
---TODO: Blit
 --TODO: Cool idea, keep a cursor and return it on draw functions
 --TODO: Co-ord bounce: checks coordinate locations of one context relative to another context
 
 local cplat = require()
 local environment = cplat.require "environment"
 local ctxu = cplat.require "contextutils"
+--local debugger = cplat.require "debugger"
 
 local natives = environment.getNatives()
 
@@ -117,6 +117,8 @@ gui.getNativeContext = function(term)
 			color = color or ctx.currentBackgroundColor
 			fg = fg or ctx.currentTextColor
 			
+			x, y = x-ctx.scroll.x, y-ctx.scroll.y
+			
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
 			
 			if ctx.INTERNALS2.isColor then
@@ -128,6 +130,21 @@ gui.getNativeContext = function(term)
 			term.write(char or " ")
 		end
 		ctx.blit = function(x, y, str, bstr, fstr)
+			x, y = x-ctx.scroll.x, y-ctx.scroll.y
+			
+			if ctx.INTERNALS2.xtinverted then
+				str = ctxu.reverseTextX(str)
+				bstr = ctxu.reverseTextX(bstr)
+				fstr = ctxu.reverseTextX(fstr)
+				x=ctx.WIDTH-x-#str
+			end
+			if ctx.INTERNALS2.xinverted then
+				str = ctxu.reverseTextX(str)
+				bstr = ctxu.reverseTextX(bstr)
+				fstr = ctxu.reverseTextX(fstr)
+				x=ctx.WIDTH-x-#str
+			end
+			
 			term.setCursorPos(x+1, y+1)
 			local built1, built2, built3 = "", "", ""
 			while #str>0 do
@@ -202,6 +219,8 @@ gui.getNativeContext = function(term)
 			color = color or ctx.currentBackgroundColor
 			fg = fg or ctx.currentTextColor
 			
+			x, y = x-ctx.scroll.x, y-ctx.scroll.y
+			
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
 			
 			if ctx.INTERNALS2.isColor then
@@ -220,6 +239,8 @@ gui.getNativeContext = function(term)
 			color = color or ctx.currentBackgroundColor
 			fg = fg or ctx.currentTextColor
 			
+			x, y = x-ctx.scroll.x, y-ctx.scroll.y
+			
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-l) or x
 			
 			
@@ -232,6 +253,19 @@ gui.getNativeContext = function(term)
 		ctx.blit = function(x, y, str, bstr, fstr)
 			checkInitialized(ctx)
 			if term.getSimulated() then return end
+			
+			x, y = x-ctx.scroll.x, y-ctx.scroll.y
+			if ctx.INTERNALS2.xtinverted then
+				str = ctxu.reverseTextX(str)
+				bstr = ctxu.reverseTextX(bstr)
+				fstr = ctxu.reverseTextX(fstr)
+			end
+			if ctx.INTERNALS2.xinverted then
+				str = ctxu.reverseTextX(str)
+				bstr = ctxu.reverseTextX(bstr)
+				fstr = ctxu.reverseTextX(fstr)
+				x=ctx.WIDTH-x-#str
+			end
 			
 			local builtstr, bcol, fcol = "", "", ""
 			local ni = 0
@@ -285,6 +319,9 @@ gui.getNativeContext = function(term)
 			ctx.WIDTH, ctx.HEIGHT = term.getSize()
 			ctx.INTERNALS2.isColor = ctx.INTERNALS2.enableColor and pcall(gpu.setDepth, 4)
 		end
+		ctx.setAutoSize = function()
+			error("Cannot set autosize on native conext")
+		end
 		ctx.endDraw = function()
 			checkCanEndDraw(ctx)
 			ctx.INTERNALS.drawing = false
@@ -312,6 +349,7 @@ end
 gui.getContext = function(parent, x, y, l, h)
 	local context = {
 		position = {x=x or 0,y=y or 0},
+		scroll = {x=0, y=0},
 		WIDTH = l or (parent and parent.WIDTH),
 		HEIGHT = h or (parent and parent.HEIGHT),
 		hasColor = true,
@@ -363,6 +401,7 @@ contextAPI.clear = function(ctx, color, char)
 end
 contextAPI.drawPixel = function(ctx, x, y, color, char, fg)
 	char = char and tostring(char)
+	x, y = x-ctx.scroll.x, y-ctx.scroll.y
 	x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
 	if (x>0 and (not ctx.WIDTH or x<ctx.WIDTH)) and (y>0 and (not ctx.HEIGHT or y<ctx.HEIGHT)) then
 		ctx.parent.drawPixel(ctx.position.x+x, ctx.position.y+y, color, char, fg)
@@ -375,6 +414,7 @@ contextAPI.drawText = function(ctx, x, y, text, color, fg)
 		text = ctxu.reverseTextX(text)
 	end
 	if ctx.parent.drawText and ctx.INTERNALS2.enableOptimizations then
+		x, y = x-ctx.scroll.x, y-ctx.scroll.y
 		if ctx.INTERNALS2.xinverted then
 			text = ctxu.reverseTextX(text)
 			x=ctx.WIDTH-x-ctxu.getLineLength(text)
@@ -396,6 +436,7 @@ contextAPI.drawFilledRect = function(ctx, x, y, l, h, color, char, fg)
 	if checkLH(ctx, l, h) then return end
 	char = char and tostring(char)
 	if ctx.parent.drawFilledRect and ctx.INTERNALS2.enableOptimizations then
+		x, y = x-ctx.scroll.x, y-ctx.scroll.y
 		x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-l) or x
 		ctx.parent.drawFilledRect(ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
 		return
@@ -432,8 +473,20 @@ contextAPI.drawTextBox = function(ctx, x, y, text, color, fg, meta)
 	ctx.drawText(x, y, text, color, fg)
 end
 contextAPI.blit = function(ctx, x, y, str, bstr, fstr)
+	if ctx.INTERNALS2.xtinverted then
+		str = ctxu.reverseTextX(str)
+		bstr = ctxu.reverseTextX(bstr)
+		fstr = ctxu.reverseTextX(fstr)
+	end
 	if ctx.enableOptimizations then
 		if y>ctx.HEIGHT then return end
+		x, y = x-ctx.scroll.x, y-ctx.scroll.y
+		if ctx.INTERNALS2.xinverted then
+			str = ctxu.reverseTextX(str)
+			bstr = ctxu.reverseTextX(bstr)
+			fstr = ctxu.reverseTextX(fstr)
+			x=ctx.WIDTH-x-#str
+		end
 		str = str:sub(1, ctx.WIDTH-x)
 		bstr = bstr:sub(1, ctx.WIDTH-x)
 		fstr = fstr:sub(1, ctx.WIDTH-x)
@@ -470,6 +523,28 @@ contextAPI.update = function(ctx)
 	ctx.WIDTH = (ctx.INTERNALS2.useParentWidth and ctx.parent and ctx.parent.WIDTH) or ctx.WIDTH
 	ctx.HEIGHT = (ctx.INTERNALS2.useParentHeight and ctx.parent and ctx.parent.HEIGHT) or ctx.HEIGHT
 	ctx.INTERNALS2.isColor = ctx.parent.INTERNALS2.isColor and ctx.INTERNALS2.enableColor
+end
+contextAPI.setAutoSize = function(ctx, w, h)
+	if w~=nil then
+		ctx.useParentWidth = w
+	end
+	if h~=nil then
+		ctx.useParentHeight = h
+	end
+end
+contextAPI.setScroll = function(ctx, x, y)
+	if type(x) == "table" then x, y = x[1], x[2] end
+	ctx.scroll.x = x or ctx.scroll.x
+	ctx.scroll.y = y or ctx.scroll.y
+end
+contextAPI.adjustScroll = function(ctx, x, y)
+	if type(x) == "table" then x, y = x[1], x[2] end
+	ctx.scroll.x = ctx.scroll.x + (x or 0)
+	ctx.scroll.y = ctx.scroll.y + (y or 0)
+end
+contextAPI.getScroll = function(ctx, t)
+	if t then return ctx.scroll[t] end
+	return {ctx.scroll.x, ctx.scroll.y}
 end
 
 contextAPI.invertX = function(ctx)

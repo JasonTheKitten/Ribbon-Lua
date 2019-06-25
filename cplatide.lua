@@ -17,7 +17,7 @@ local APP = {
 		ROOT = "/",
 		
 		DEBUGFILE = "debug.log",
-		--CRASHHANDLER = "${PATH}/app/crash.lua",
+		CRASHHANDLER = "${PATH}/app/crash.lua",
 		
 		PATH = nil,
 		CPLAT = nil,
