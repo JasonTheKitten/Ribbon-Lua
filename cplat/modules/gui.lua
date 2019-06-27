@@ -2,6 +2,7 @@
 --TODO: Support 8-bit depth
 --TODO: Cool idea, keep a cursor and return it on draw functions
 --TODO: Co-ord bounce: checks coordinate locations of one context relative to another context
+--TODO: Support display invert with data
 
 local cplat = require()
 local environment = cplat.require "environment"
@@ -308,7 +309,7 @@ gui.getNativeContext = function(term)
 			blitIf()
 		end
 		ctx.drawData = function(data)
-			local trimmedData = {} --Should be squared
+			local trimmedData = {x=data.x, y=data.y} --Should be squared
 			for y=0, #data do
 				trimmedData[y] = {}
 				for x=0, #data[y] do
@@ -379,7 +380,7 @@ gui.getNativeContext = function(term)
 				for fg, gps in pairs(fgs) do
 					term.setForeground(fg or 15)
 					for id, dat in pairs(gps) do
-						term.set(dat.x+1, dat.y+1, dat.text, dat.vertical)
+						term.set(dat.x+trimmedData.x+1, dat.y+trimmedData.y+1, dat.text, dat.vertical)
 					end
 				end
 			end
@@ -422,10 +423,8 @@ gui.getNativeContext = function(term)
 			if term.getSimulated() then return end
 			gpu.bind(ctx.INTERNALS.screen, false)
 			pcall(gpu.setDepth, ctx.INTERNALS.depth)
-			if ctx.INTERNALS2.isColor then
-				term.setBackground(ctx.INTERNALS.theme.bg)
-				term.setForeground(ctx.INTERNALS.theme.fg)
-			end
+			pcall(gpu.setBackground, ctx.INTERNALS.theme.bg)
+			pcall(gpu.setForeground, ctx.INTERNALS.theme.fg)
 		end
 		return ctx
 	end
@@ -598,7 +597,7 @@ end
 contextAPI.drawData = function(ctx, data)
 	--TODO: Canvas inversion
 	if ctx.INTERNALS2.enableOptimizations and ctx.parent.drawData then
-		local trimmedData = {x=data.x, y=data.y}
+		local trimmedData = {x=data.x+ctx.position.x, y=data.y+ctx.position.y}
 		for y=0, #data do
 			if y+trimmedData.y>=ctx.HEIGHT then break end
 			trimmedData[y] = {}

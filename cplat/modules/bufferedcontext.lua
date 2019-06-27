@@ -67,16 +67,18 @@ bctx.wrapContext = function(ctx, es)
 	ctx.getBuffer = function()
 		return buffer
 	end
-	ctx.drawBuffer = function()
-		ctx.parent.drawData(ctx.getData())
+	ctx.drawBuffer = function(x, y, l, h)
+		ctx.parent.drawData(ctx.getData(x, y, l, h))
 	end
-	ctx.getData = function()
-		local data = {x=ctx.position.x, y=ctx.position.y}
-		for y=0, ctx.HEIGHT-1 do
-			local by = y+ctx.scroll.y
+	ctx.getData = function(px, py, l, h)
+		px, py = px or 0, py or 0
+		l, h = l or ctx.WIDTH, h or ctx.HEIGHT
+		local data = {x=ctx.position.x+px, y=ctx.position.y+py}
+		for y=0, h-1 do
+			local by = y+ctx.scroll.y+py
 			data[y] = {}
-			for x=0, ctx.WIDTH-1 do
-				local bx = x+ctx.scroll.x
+			for x=0, l-1 do
+				local bx = x+ctx.scroll.x+px
 				data[y][x] = {}
 				if buffer[by] and buffer[by][bx] then
 					data[y][x] = {buffer[by][bx].char, buffer[by][bx].background or 0, buffer[by][bx].foreground or 15}
