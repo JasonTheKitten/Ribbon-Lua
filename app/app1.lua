@@ -14,16 +14,16 @@ ctx.startDraw()
 
 octx2.update()
 ctx.update()
---while true do
+while true do
 	for y = 0, ctx.HEIGHT-1 do
 		for x = 0, ctx.WIDTH-1 do
-			ctx.drawPixel(x, y, math.random(0, 15), " ", 15)
+			ctx.drawPixel(x, y, math.random(0, 15), string.char(math.random(31, 255)), math.random(0, 15))
 		end
 	end
 
 	ctx.drawBuffer()
 	coroutine.yield()
---end
+end
 
 ctx.endDraw()
 octx2.endDraw()

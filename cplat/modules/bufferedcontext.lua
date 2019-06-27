@@ -73,11 +73,13 @@ bctx.wrapContext = function(ctx, es)
 	ctx.getData = function()
 		local data = {x=ctx.position.x, y=ctx.position.y}
 		for y=0, ctx.HEIGHT-1 do
+			local by = y+ctx.scroll.y
 			data[y] = {}
 			for x=0, ctx.WIDTH-1 do
+				local bx = x+ctx.scroll.x
 				data[y][x] = {}
-				if buffer[y] and buffer[y][x] then
-					data[y][x] = {buffer[y][x].char, buffer[y][x].background or 0, buffer[y][x].foreground or 15}
+				if buffer[by] and buffer[by][bx] then
+					data[y][x] = {buffer[by][bx].char, buffer[by][bx].background or 0, buffer[by][bx].foreground or 15}
 				else
 					data[y][x] = {" ", contextColor}
 				end

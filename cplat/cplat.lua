@@ -1,3 +1,5 @@
+--TODO: Finish sandboxing
+
 --CPlat Core
 local cplat = {}
 

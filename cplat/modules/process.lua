@@ -3,6 +3,7 @@
 --TODO: Thank you @SquidDev for suggesting the use of os.sleep for timer events.
 
 --TODO: HTTP
+--TODO: Move interrupts enabled check, queue interrupts, add clear interrupts function
 
 local cplat = require()
 local environment = cplat.require "environment"
@@ -95,9 +96,7 @@ process.createEventSystem = function()
 		d.preventDefault = function()
 			eventSystem.doDefault = false
 		end
-		if not eventSystem.interruptsEnabled then
-			return --
-		end
+		if not eventSystem.interruptsEnabled then return end
 		eventSystem.doDefault = true
 		local function execL(v)
 			local c = coroutine.create(function(...)

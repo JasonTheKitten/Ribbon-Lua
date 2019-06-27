@@ -111,6 +111,7 @@ gui.getNativeContext = function(term)
 	
 		local ctx = gui.getContext(term, 0, 0, 0, 0)
 		ctx.INTERNALS2.isNative = true
+		ctx.INTERNALS2.enableOptimizations = false
 		ctx.drawPixel = function(x, y, color, char, fg)
 			checkInitialized(ctx)
 			
@@ -177,7 +178,7 @@ gui.getNativeContext = function(term)
 		end
 		ctx.update = function()
 			ctx.WIDTH, ctx.HEIGHT = term.getSize()
-			ctx.isColor = ctx.INTERNALS2.enableColor and term.isColor()
+			ctx.INTERNALS2.isColor = ctx.INTERNALS2.enableColor and term.isColor()
 		end
 		ctx.setAutoSize = function()
 			error("Cannot set autosize on native conext")
@@ -190,6 +191,7 @@ gui.getNativeContext = function(term)
 				term.setTextColor(ctx.INTERNALS.theme.fg)
 			end
 		end
+		ctx.update()
 		return ctx
 	elseif isOC then
 		local dumbTerm = {
@@ -197,6 +199,7 @@ gui.getNativeContext = function(term)
 			getSimulated = function() return true end
 		}
 		
+		local ctx
 		xpcall(function()
 			assert(term~=null_ref)
 			local component = natives.require("component")
@@ -204,6 +207,17 @@ gui.getNativeContext = function(term)
 			term = { --TODO: Handle removed gpu/monitor
 				getSize = function() return gpu.getViewport() end,
 				getSimulated = function() return not gpu or not gpu.getScreen() end,
+				setBackground = function(color)
+					if color>15 then error("Extended pallete coming at a later time", 3) end
+					if gpu then pcall(gpu.setBackground, color, true) end
+				end, 
+				setForeground = function(color)
+					if color>15 then error("Extended pallete coming at a later time", 3) end
+					if gpu then pcall(gpu.setForeground, color, true) end
+				end,
+				set = function(x, y, t, v)
+					if gpu then pcall(gpu.set, x, y, t, v) end
+				end,
 				address = term,
 				gpu = gpu
 			}
@@ -211,6 +225,7 @@ gui.getNativeContext = function(term)
 		
 		local ctx = gui.getContext(term, 0, 0, 0, 0)
 		ctx.INTERNALS2.isNative = true
+		ctx.INTERNALS2.enableOptimizations = false
 		local gpu, addr = term.gpu, term.address
 		ctx.drawPixel = function(x, y, color, char, fg)
 			checkInitialized(ctx)
@@ -225,10 +240,10 @@ gui.getNativeContext = function(term)
 			x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
 			
 			if ctx.INTERNALS2.isColor then
-				gpu.setBackground(color or ctx.CONFIG.defaultBackgroundColor, true)
-				gpu.setForeground(fg or ctx.CONFIG.defaultTextColor, true)
+				term.setBackground(color or ctx.CONFIG.defaultBackgroundColor)
+				term.setForeground(fg or ctx.CONFIG.defaultTextColor)
 			end
-			gpu.set(x+1, y+1, char or " ")
+			term.set(x+1, y+1, char or " ")
 		end
 		ctx.drawFilledRect = function(x, y, l, h, color, char, fg)
 			checkInitialized(ctx)
@@ -246,8 +261,8 @@ gui.getNativeContext = function(term)
 			
 			
 			if ctx.INTERNALS2.isColor then
-				gpu.setBackground(color or ctx.CONFIG.defaultBackgroundColor, true)
-				gpu.setForeground(fg or ctx.CONFIG.defaultTextColor, true)
+				term.setBackground(color or ctx.CONFIG.defaultBackgroundColor)
+				term.setForeground(fg or ctx.CONFIG.defaultTextColor)
 			end
 			gpu.fill(x+1, y+1, l, h, char or " ")
 		end
@@ -275,10 +290,10 @@ gui.getNativeContext = function(term)
 				if nbc~=bcol or nfc~=fcol then
 					if bcol and (bcol~=" ") and (bcol~="") then
 						if ctx.INTERNALS2.isColor then
-							gpu.setBackground(tonumber(bcol, 16) or 0, true)
-							gpu.setForeground(tonumber(fcol, 16) or 15, true)
+							term.setBackground(tonumber(bcol, 16) or 0)
+							term.setForeground(tonumber(fcol, 16) or 15)
 						end
-						gpu.set(x+ni+1, y+1, builtstr)
+						term.set(x+ni+1, y+1, builtstr)
 					end
 					ni = ni+#builtstr
 					builtstr, bcol, fcol = "", nbc, nfc
@@ -308,7 +323,7 @@ gui.getNativeContext = function(term)
 					trimmedData[y][x] and
 					trimmedData[y][x][1] and
 					(trimmedData[y][x][2] == bg or not bg) and
-					(trimmedData[y][x][3] == fg or space[trimmedData[y][x][1]]) and
+					(trimmedData[y][x][3] == fg or not fg or space[trimmedData[y][x][1]]) and
 					trimmedData[y][x][1] ~= ""
 			end
 			for y=0, #trimmedData do
@@ -360,11 +375,11 @@ gui.getNativeContext = function(term)
 				end
 			end
 			for bg, fgs in pairs(groups) do
-				gpu.setBackground(bg or 0, true)
+				term.setBackground(bg or 0)
 				for fg, gps in pairs(fgs) do
+					term.setForeground(fg or 15)
 					for id, dat in pairs(gps) do
-						gpu.setForeground(fg or 15, true)
-						gpu.set(dat.x+1, dat.y+1, dat.text, dat.vertical)
+						term.set(dat.x+1, dat.y+1, dat.text, dat.vertical)
 					end
 				end
 			end
@@ -406,10 +421,10 @@ gui.getNativeContext = function(term)
 
 			if term.getSimulated() then return end
 			gpu.bind(ctx.INTERNALS.screen, false)
-			pcall(setDepth, ctx.INTERNALS.depth)
+			pcall(gpu.setDepth, ctx.INTERNALS.depth)
 			if ctx.INTERNALS2.isColor then
-				gpu.setBackground(ctx.INTERNALS.theme.bg)
-				gpu.setForeground(ctx.INTERNALS.theme.fg)
+				term.setBackground(ctx.INTERNALS.theme.bg)
+				term.setForeground(ctx.INTERNALS.theme.fg)
 			end
 		end
 		return ctx
@@ -582,7 +597,7 @@ contextAPI.blit = function(ctx, x, y, str, bstr, fstr)
 end
 contextAPI.drawData = function(ctx, data)
 	--TODO: Canvas inversion
-	if true then--ctx.INTERNALS2.optimizationsEnabled and ctx.parent.drawData then
+	if ctx.INTERNALS2.enableOptimizations and ctx.parent.drawData then
 		local trimmedData = {x=data.x, y=data.y}
 		for y=0, #data do
 			if y+trimmedData.y>=ctx.HEIGHT then break end

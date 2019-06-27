@@ -1,5 +1,4 @@
---TODO: Support CPlat on other bios/OS
---TODO: Enable communication with CPlatParent instance stored in _G
+--TODO: Close all contexts and handles when an error occurs.
 
 --App Info
 local APP = {
@@ -91,7 +90,7 @@ local results = {pcall(function(...)
 	cplat.setAppInfo(APP)
 	
 	--Setup debug
-	cplat.require("debugger").setDebugFile(APP.PATHS.DEBUGFILE)
+	pcall(function() cplat.require("debugger").setDebugFile(APP.PATHS.DEBUGFILE) end)
 	
 	--Execute app
 	baseError = "Application crashed!"
