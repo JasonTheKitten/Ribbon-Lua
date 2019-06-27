@@ -1,4 +1,5 @@
 --TODO: Only support graphical and hybrid applications
+--TODO: Support 8-bit depth
 --TODO: Cool idea, keep a cursor and return it on draw functions
 --TODO: Co-ord bounce: checks coordinate locations of one context relative to another context
 
@@ -291,6 +292,83 @@ gui.getNativeContext = function(term)
 			end
 			blitIf()
 		end
+		ctx.drawData = function(data)
+			local trimmedData = {} --Should be squared
+			for y=0, #data do
+				trimmedData[y] = {}
+				for x=0, #data[y] do
+					trimmedData[y][x] = {processed = false, data[y][x][1],data[y][x][2],data[y][x][3]}
+				end
+			end
+			local space = {[" "] = true, ["\t"] = true}
+			local groups = {}
+			local function checkEligible(x, y, bg, fg)
+				return
+					trimmedData[y] and
+					trimmedData[y][x] and
+					trimmedData[y][x][1] and
+					(trimmedData[y][x][2] == bg or not bg) and
+					(trimmedData[y][x][3] == fg or space[trimmedData[y][x][1]]) and
+					trimmedData[y][x][1] ~= ""
+			end
+			for y=0, #trimmedData do
+				for x=0, #trimmedData[y] do
+					if not trimmedData[y][x].processed then
+						local pointsH, pointsV = 0, 0
+						local lengthH, heightV = 0, 0
+						local textH, textV = "", ""
+						local bgH, fgH, bgV, fgV
+						while checkEligible(x+lengthH, y, bgH, fgH) do
+							if not trimmedData[y][x+lengthH].processed then
+								pointsH = pointsH+1
+							end
+							textH = textH..trimmedData[y][x+lengthH][1]
+							bgH = bgH or trimmedData[y][x+lengthH][2]
+							fgH = fgH or trimmedData[y][x+lengthH][3]
+							lengthH = lengthH+1
+						end
+						while checkEligible(x, y+heightV, bgV, fgV) do
+							if not trimmedData[y+heightV][x].processed then
+								pointsH = pointsH+1
+							end
+							textV = textV..trimmedData[y+heightV][x][1]
+							bgV = bgV or trimmedData[y+heightV][x][2]
+							fgV = fgV or trimmedData[y+heightV][x][3]
+							heightV = heightV+1
+						end
+						local textm, bgm, fgm
+						if pointsV>pointsH then
+							textm, bgm, fgm = textV, bgV, fgV
+							for y2=0, heightV-1 do
+								trimmedData[y+y2][x].processed = true
+							end
+						else
+							textm, bgm, fgm = textH, bgH, fgH
+							for x2=0, lengthH-1 do
+								trimmedData[y][x+x2].processed = true
+							end
+						end
+						bgm, fgm = bgm or 0, fgm or 15
+						groups[bgm] = groups[bgm] or {}
+						groups[bgm][fgm] = groups[bgm][fgm] or {}
+						table.insert(groups[bgm][fgm], {
+							x=x, y=y,
+							text = textm,
+							vertical = pointsV>pointsH,
+						})
+					end
+				end
+			end
+			for bg, fgs in pairs(groups) do
+				gpu.setBackground(bg or 0, true)
+				for fg, gps in pairs(fgs) do
+					for id, dat in pairs(gps) do
+						gpu.setForeground(fg or 15, true)
+						gpu.set(dat.x+1, dat.y+1, dat.text, dat.vertical)
+					end
+				end
+			end
+		end
 		ctx.startDraw = function()
 			checkCanStartDraw(ctx)
 			if term.getSimulated() then
@@ -498,6 +576,29 @@ contextAPI.blit = function(ctx, x, y, str, bstr, fstr)
 				local bg = tonumber(bstr:sub(i,i), 16) or 0
 				local fg = tonumber(fstr:sub(i,i), 16) or 15
 				ctx.drawPixel(x+i-1, y, bg, str:sub(i, i), fg)
+			end
+		end
+	end
+end
+contextAPI.drawData = function(ctx, data)
+	--TODO: Canvas inversion
+	if true then--ctx.INTERNALS2.optimizationsEnabled and ctx.parent.drawData then
+		local trimmedData = {x=data.x, y=data.y}
+		for y=0, #data do
+			if y+trimmedData.y>=ctx.HEIGHT then break end
+			trimmedData[y] = {}
+			for x=0, #data[y] do
+				if x+trimmedData.x>=ctx.WIDTH then break end
+				trimmedData[y][x] = {table.unpack(data[y][x])}
+			end
+		end
+		ctx.parent.drawData(trimmedData)
+	else
+		for y=0, #data do
+			for x=0, #data[y] do
+				if data[y][x][1] and data[y][x][2] then
+					ctx.drawPixel(x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+				end
 			end
 		end
 	end

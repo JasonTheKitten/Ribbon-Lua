@@ -78,8 +78,6 @@ cplat.require = function(p)
 	if not m then error("Failed to load module \""..p.."\" because:\n"..err, 2) end
 	local extramethods=m(required[p])
 	
-	--I can not decide if I should deprecate this
-	--A bit of a hacky solution, does not support pairs
 	setmetatable(required[p], {
 		__index=extramethods
 	})
@@ -181,7 +179,7 @@ env.os = mos
 env.string = string
 env.table = table
 
-env.table.unpack = table.unpack or unpack
+env.table.unpack = table.unpack or unpack --TODO: Isolate table API
 
 local package = {
     loaded = {},

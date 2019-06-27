@@ -142,7 +142,7 @@ util.serialize = function(d)
 	return formatValue(d)
 end
 util.unserialize = function(d)
-	local ok, e = pcall(load, "return "..d, "<chunck>", "tb", sandbox)
+	local ok, e = pcall(load, "return "..d, "<chunk>", "tb", sandbox)
 	if not (ok and e) then return end
 	ok, e = pcall(e)
 	if ok and e then return e end

@@ -1,3 +1,5 @@
+--Thank you, OC, for key codes and colors
+--TODO: Finish
 local statics = ...
 
 local mstatics = {}
@@ -51,10 +53,27 @@ mstatics.colours = colors
 statics.COLORS = mstatics.colors
 statics.COLOURS = mstatics.colors
 
-local keys = { --Based off of the OC key list, but should work with CC
+local keys = { 
 	["F11"] = 0x57,
 	["F12"] = 0x58,
 	["backspace"] = 0x0E,
+	["space"] = 0x39,
+	["tab"] = 0x0F,
+	["up"] = 0xC8,
+	["down"] = 0xD0,
+	["left"] = 0xCB,
+	["right"] = 0xCD,
+	["home"] = 0xC7,
+	["pageup"] = 0xC9,
+	["enter"] = 0x1C,
+	["lshift"] = 0x2A,
+	["rshift"] = 0x36,
+	["lctrl"] = 0x1D,
+	["rctrl"] = 0x9D,
+	["lalt"] = 0x38,
+	["ralt"] = 0xB8,
+	
+	
 } --TODO: alot more keys
 local function putRow(code, letters)
 	for i=1, #letters do
@@ -66,11 +85,14 @@ local function putRowT(code, k)
 		keys[code-1+i] = k[i]
 	end
 end
-putRow(0x02, "`1234567890-=")
+putRow(0x01, "`1234567890-=")
 putRow(0x10, "qertyuiop[]\\")
 putRow(0x1E, "asdfghjkl;'")
 putRow(0x2C,"zxcvbnm,./")
 putRowT(0x3B, {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"})
+putRowT(0xCF, {"end", "pagedown", "insert", "delete"})
+
+
 
 for k, v in pairs(keys) do
 	keys[v] = k

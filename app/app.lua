@@ -60,7 +60,7 @@ sleep(1)
 for i=0, tonumber(ttime) do
 	t = i
 	draw()
-	ctx.adjustScroll(1, 1)
+	ctx.adjustScroll(math.random(-1, 1), math.random(-1, 1))
 	sleep(1)
 	i=i+1
 end

@@ -1,5 +1,6 @@
 --Thank you @LDDestroier for getting workspace to work space with CPlat!
 --Thank you @Justyn for the alternate code for the `char` event in OC.
+--TODO: Thank you @SquidDev for suggesting the use of os.sleep for timer events.
 
 --TODO: HTTP
 
@@ -59,6 +60,11 @@ process.execute = function(f, ...)
 		end
 	end
 	while coroutine.status(c)~="dead" do
+		for k, v in pairs(backgroundscripts) do
+			if coroutine.status(v)~="dead" then
+				coroutine.resume(v)
+			end
+		end
 		catchEvents()
 		resume()
 	end
@@ -67,6 +73,10 @@ end
 
 process.registerEvent = function(e, f)
 	eventregister[e] = f
+end
+
+process.registerBackgroundScript = function(s)
+	table.insert(backgroundscripts, coroutine.create(s))
 end
 
 process.createEventSystem = function()
