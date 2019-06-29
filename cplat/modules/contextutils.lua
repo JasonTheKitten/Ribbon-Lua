@@ -3,12 +3,6 @@ local contextutils = ...
 
 --Context Lib
 contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph)
-	if not (ctx.WIDTH or ctx.PREFERRED_WIDTH) then
-		error("Neither an absolute width nor a preferred width were set on the passed context", 2)
-	end
-	if not (ctx.HEIGHT or ctx.PREFERRED_HEIGHT) then
-		error("Neither an absolute height nor a preferred height were set on the passed context", 2)
-	end
 	local ol, oy = 0, 0
 	if l and opl and l>0 and opl~=0 then
 		ol = l*opl
@@ -18,8 +12,8 @@ contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph)
 	end
 	ax, ay, px, py = ax or 0, ay or 0, px or 0, py or 0
 	return 
-		math.floor(ax+ctx.WIDTH*px+ol), 
-		math.floor(ay+ctx.HEIGHT*py+oy)
+		math.floor(ax+ctx.width*px+ol), 
+		math.floor(ay+ctx.height*py+oy)
 end
 
 --String Lib

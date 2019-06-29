@@ -73,6 +73,6 @@ ctxa.drawTextBox = function(ctx, x, y, text, color, fg, meta)
 	
 	
 	
-	ctx.drawFilledRect(startX, startY, totalWidth, totalHeight, color, meta.borderChar, meta.borderTextColor)
+	ctx.drawRect(startX, startY, totalWidth, totalHeight, true, color, meta.borderChar, meta.borderTextColor)
 	ctx.drawText(startX+meta.borderLeft, startY+meta.borderTop, text, color, fg)
 end

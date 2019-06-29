@@ -1,15 +1,16 @@
 local cplat = require()
 
 local process = cplat.require "process"
-local gui = cplat.require "gui"
+local contextapi = cplat.require "context"
+local displayapi = cplat.require "display"
 local bctx = cplat.require "bufferedcontext"
 local ctxu = cplat.require "contextutils"
 local statics = cplat.require "statics"
 
 local COLORS = statics.get("colors")
 
-local display = gui.getDisplay(gui.getDefaultDisplayID())
-local octx = gui.getNativeContext(display)
+local display = displayapi.getDisplay(displayapi.getDefaultDisplayID())
+local octx = contextapi.getNativeContext(display)
 local ctx = bctx.getContext(octx, 0, 0, nil, nil, process)
 
 octx.startDraw()
@@ -28,7 +29,7 @@ local function draw(rst)
 	
 	if rst then
 		ctx.clear(COLORS.BLUE)
-		ctx.drawEmptyRect(0, 0, ctx.WIDTH or ctx.PREFERRED_WIDTH, ctx.HEIGHT or ctx.PREFERRED_HEIGHT, COLORS.LIGHTBLUE, "%", COLORS.GREEN)
+		ctx.drawRect(0, 0, ctx.width, ctx.height, false, COLORS.LIGHTBLUE, "%", COLORS.GREEN)
 		ctx.drawText(titlePosX, titlePosY, timerLabel, COLORS.PINK, COLORS.WHITE)
 	end
 	local timeW0 = ctxu.align(t or "OUT", ctxu.ALIGN_RIGHT, 3, (rst and "X") or "0")

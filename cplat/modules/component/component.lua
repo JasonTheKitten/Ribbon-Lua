@@ -1,23 +1,27 @@
 local cplat = require()
 
-local process = require "process"
-local gui = require "gui"
-local bufferedContext = require "bufferedcontext"
+local process = cplat.require "process"
+local gui = cplat.require "gui"
+local bufferedContext = cplat.require "bufferedcontext"
+local class = cplat.require "class"
 
-local page = {}
-page.create = function(parentContext, parentProcess, x, y, l, h)
-    local pg = {
-        INTERNALS = {
-            parentContext = parentContext,
-    		parentProcess = parentProcess
-        },
-        x = x,
-        y = y,
-        width = l,
-        height = h
-    }
-    
-    pg.context = gui.createContext(parentContext, x, y, l, h)
-    
-    return pg
+local Size = cplat.require("class/size").Size
+
+local component = ...
+local Component = {}
+component.Component = Component
+
+function Component:getSize()
+	return self.size
+end
+function Component:setSize(size)
+	
+end
+
+function Component:setPreferredSize()
+	return self.preferredSize
+end
+
+function Component:getMinimumSize()
+
 end

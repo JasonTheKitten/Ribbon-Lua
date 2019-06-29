@@ -1,6 +1,7 @@
 local cplat = require()
 
 local process = cplat.require "process"
+local class = cplat.require "class"
 
 local component = cplat.require "component/component"
 

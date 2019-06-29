@@ -1,20 +1,21 @@
 --TODO: Track updated pixels
 --TODO: Add a Z buffer
---TODO: Scroll
 
 local cplat = require()
 
-local gui = cplat.require "gui"
+local contextapi = cplat.require "context"
 
 local bctx = ...
 
 bctx.wrapContext = function(ctx, es)
 	if not (ctx and es) then error("Arguments should be ctx, es", 2) end
 	
-	if ctx.INTERNALS2.isNative then
+	if ctx.INTERNALS.isNative then
 		error("A buffered context can not be created with a native context; Please use gui.getContext to wrap the native context.", 2)
 	end
-	ctx.INTERNALS2.enableOptimizations = false
+	ctx.INTERNALS.optimizationsEnabled = false
+	
+	local ifn = ctx.INTERNALS.IFN
 	
 	local function checkInitialized()
 		if not ctx.INTERNALS.drawing then
@@ -26,11 +27,9 @@ bctx.wrapContext = function(ctx, es)
 	local charVisible, contextColor = true, nil
 	local onclick, onrelease, ondragstart, ondragover, ondragend
 	
-
-	ctx.INTERNALS2.optimizationsEnabled = false
-	ctx.drawPixel = function(x, y, color, char, fg)
+	ifn.drawPixel = function(q, x, y, color, char, fg)
 		char = char and charVisible and tostring(char)
-		x = (ctx.INTERNALS2.xinverted and ctx.WIDTH-x-1) or x
+		x = (ctx.INTERNALS.xinverted and ctx.width-x-1) or x
 		if x>=0 and y>=0 then
 			buffer[y] = buffer[y] or {}
 			buffer[y][x] = buffer[y][x] or {}
@@ -72,7 +71,7 @@ bctx.wrapContext = function(ctx, es)
 	end
 	ctx.getData = function(px, py, l, h)
 		px, py = px or 0, py or 0
-		l, h = l or ctx.WIDTH, h or ctx.HEIGHT
+		l, h = l or ctx.width, h or ctx.height
 		local data = {x=ctx.position.x+px, y=ctx.position.y+py}
 		for y=0, h-1 do
 			local by = y+ctx.scroll.y+py
@@ -95,7 +94,7 @@ bctx.wrapContext = function(ctx, es)
 		es.addEventListener(e, function(e)
             local x = e.x-ctx.position.x-ctx.scroll.x
     		local y = e.y-ctx.position.y-ctx.scroll.y
-    		if x>=0 and x<ctx.WIDTH and y>=0 and y<ctx.HEIGHT then
+    		if x>=0 and x<ctx.width and y>=0 and y<ctx.height then
     			if buffer[y] and buffer[y][x] and buffer[y][x][t] then
     				buffer[y][x][t]({
     					x = x,
@@ -114,5 +113,5 @@ bctx.wrapContext = function(ctx, es)
 	return ctx
 end
 bctx.getContext = function(p, x, y, l, h, es)
-	return bctx.wrapContext(gui.getContext(p, x, y, l, h), es)
+	return bctx.wrapContext(contextapi.getContext(p, x, y, l, h), es)
 end

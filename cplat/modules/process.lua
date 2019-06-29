@@ -37,6 +37,9 @@ process.execute = function(f, ...)
 		end
 		ok, err = coroutine.resume(c, cplat.getPassArgs())
 	end
+	local function terminate()
+		error("User terminated application", -1) 
+	end
 	if isCC then
 		catchEvents = function()
 			eq = {}
@@ -44,7 +47,7 @@ process.execute = function(f, ...)
 			local tid = natives.os.startTimer(.05)
 			local e = {coroutine.yield()}
 			while not ((e[1]=="q_bottom" and e[2]==cid) or (e[1] == "timer" and e[2] == tid)) do
-				if e[1] == "terminate" then error("User terminated application", -1) end
+				if e[1] == "terminate" then terminate() end
 				table.insert(eq, 1, e)
 				e = {coroutine.yield()}
 			end
@@ -55,6 +58,7 @@ process.execute = function(f, ...)
 			eq = {}
 			local e = {natives.require("computer").pullSignal(0)}
 			while (#e>0) do
+				if e[1] == "interrupt" then terminate() end
 				table.insert(eq, 1, e)
 				e = {natives.require("computer").pullSignal(0)}
 			end
