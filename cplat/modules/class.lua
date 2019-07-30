@@ -43,3 +43,20 @@ function Class:isA(class)
 	return false
 end
 class.Class = Class
+
+class.checkType = function(c, e, t, m, ...)
+	local args = {...}
+	table.insert(args, e)
+	local o = (type(c) == "table") and c.isA
+	if o then 
+		o = false
+		for k, v in pairs(args) do
+			o = o or (c:isA(v) and c~=v)
+		end
+	end
+	if t and not o then
+		local _, err = pcall(error, "", t)
+		local msg = ((m and "Expected "..m.." Class, got other value")  or "Incorrect Value Passed").."\n\tat "..err:sub(1, -3)
+		error(msg, t)
+	end
+end

@@ -5,6 +5,7 @@ local fs = cplat.require "filesystem"
 --TODO: util.reverse
 local util = ...
 
+--Tables
 util.copy = function(val)
 	if type(val) == "table" then
 		local copy = {}
@@ -34,6 +35,7 @@ util.stringToTable = function(s, r, t)
 	return t
 end
 
+--File ops
 util.inf = function(f)
 	local ok, h = pcall(fs.open, f, "r")
 	if ok and h then
@@ -59,11 +61,12 @@ util.appf = function(f, c)
 	end
 end
 
+-- Table <--> String
 local q = "\""
 local serializeTable, serializeTableJSON
 local function formatString(str)
 	return "\""..
-		str:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("\f", "\\f"):gsub("\r", "\\r")
+		str:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\f", "\\f")
 	.."\""
 end
 local function formatValue(v, d)
@@ -156,3 +159,21 @@ end
 util.serialise = util.serialize
 util.unserialise = util.unserialize
 util.serialiseJSON = util.serializeJSON
+
+--Helper functions
+util.runIFN = function(...)
+	--Run ISomething FSomething NSomething
+	--This is why we need better function names (:
+	local qt = {}
+	local function q(...)
+		table.insert(qt, 1, {...})
+	end
+	q(...)
+	while #qt>0 do
+		local qt1 = qt[1]
+		table.remove(qt, 1)
+		if qt1 and qt1[1] then
+			qt1[1](q, table.unpack(qt1, 2))
+		end
+	end
+end

@@ -3,6 +3,7 @@ local cplat = require()
 local environment = cplat.require "environment"
 local ctxu = cplat.require "contextutils"
 local displayapi = cplat.require "display"
+local util = cplat.require "util"
 
 local natives = environment.getNatives()
 
@@ -21,10 +22,10 @@ local function checkCanStartDraw(internals)
 	if internals.drawing then error("Cannot start drawing: already drawing", 3) end
 end
 local function checkCanEndDraw(internals)
-	--if not internals.drawing then error("Cannot stop drawing: already not drawing", 3) end
+	if not internals.drawing then error("Cannot stop drawing: already not drawing", 3) end
 end
 local function checkInitialized(internals)
-	if not internals.drawing then error("Attempt to use context while not drawing", 2) end
+	if not internals.drawing then error("Attempt to use context while not drawing", 3) end
 end
 local function checkLH(ctx, l, h)
 	if not l or not h then error("Arguments missing", 3) end
@@ -35,23 +36,15 @@ local function cXY(ctx, x, y, l)
 	x = (ctx.INTERNALS.xinverted and ctx.width-x-(l or 1)) or x
 	return x, y
 end
-local function runIFN(...)
-	local qt = {}
-	local function q(...)
-		table.insert(qt, {...})
-	end
-	q(...)
-	while #qt>0 do
-		if qt[1] and qt[1][1] then
-			qt[1][1](q, table.unpack(qt[1], 2))
-		end
-		table.remove(qt, 1)
-	end
-end
+local runIFN = util.runIFN
 
 --Context lib
 local context = ...
 context.getContext = function(parent, x, y, l, h)
+	if not parent and x and y and l and h then
+		error("Arguments missing", 2)
+	end
+
 	local ctx = {
 		parent = parent,
 		position = {x=x or 0,y=y or 0},
@@ -87,6 +80,7 @@ context.getContext = function(parent, x, y, l, h)
 	end
 	
 	ctx.clear = function(color, char)
+		checkInitialized(internals)
 		char = char and tostring(char) or " "
 		runIFN(ifn.drawFilledRect, 0, 0, ctx.width, ctx.height, color, char)
 		return 0, 0
@@ -98,6 +92,7 @@ context.getContext = function(parent, x, y, l, h)
 		if x+1<ctx.width then return x+1, y else return 0, y+1 end
 	end
 	ifn.drawPixel = function(q, x, y, color, char, fg)
+		checkInitialized(internals)
 		x, y = cXY(ctx, x, y)
 		if (x>0 and (not ctx.width or x<ctx.width)) and (y>0 and (not ctx.height or y<ctx.height)) then
 			q(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
@@ -110,6 +105,7 @@ context.getContext = function(parent, x, y, l, h)
 		if x+#text<ctx.width then return x+#text, y else return 0, y+1 end
 	end
 	ifn.drawText = function(q, x, y, text, color, fg)
+		checkInitialized(internals)
 		if internals.xtinverted then
 			text = ctxu.reverseTextX(text)
 		end
@@ -141,6 +137,7 @@ context.getContext = function(parent, x, y, l, h)
 		return nx, ny
 	end
 	ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
+		checkInitialized(internals)
 		if pifn.drawFilledRect and internals.optimizationsEnabled then
 			x, y = cXY(ctx, x, y, l)
 			q(pifn.drawFilledRect, ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
@@ -153,6 +150,7 @@ context.getContext = function(parent, x, y, l, h)
 		end
 	end
 	ifn.drawEmptyRect = function(q, x, y, l, h, color, char, fg)
+		checkInitialized(internals)
 		for ox=0, l-1 do
 			q(ifn.drawPixel, x+ox, y, color, char, fg)
 			q(ifn.drawPixel, x+ox, y+h-1, color, char, fg)
@@ -179,16 +177,18 @@ context.getContext = function(parent, x, y, l, h)
 		if nx>=ctx.width then nx, ny = 0, ny+1 end
 		return nx, ny
 	end
-	ifn.drawTextBox = function(g, x, y, text, color, fg, meta)
-		g(ifn.drawFilledRect, x, y, meta.width, meta.height, color, meta.fillChar, meta.fillTextColor)
-		g(ifn.drawText, x, y, text, color, fg)
+	ifn.drawTextBox = function(q, x, y, text, color, fg, meta)
+		checkInitialized(internals)
+		q(ifn.drawFilledRect, x, y, meta.width, meta.height, color, meta.fillChar, meta.fillTextColor)
+		q(ifn.drawText, x, y, text, color, fg)
 	end
 	
 	ctx.blit = function(x, y, str, bstr, fstr)
 		runIFN(ifn.blit, x, y, str, bstr, fstr)
 		if x+#str<ctx.width then return x+#str, y else return 0, y+1 end
 	end
-	ifn.blit = function(g, x, y, str, bstr, fstr)
+	ifn.blit = function(q, x, y, str, bstr, fstr)
+		checkInitialized(internals)
 		if internals.xtinverted then
 			str = ctxu.reverseTextX(str)
 			bstr = ctxu.reverseTextX(bstr)
@@ -205,14 +205,14 @@ context.getContext = function(parent, x, y, l, h)
 			str = str:sub(1, ctx.width-x)
 			bstr = bstr:sub(1, ctx.width-x)
 			fstr = fstr:sub(1, ctx.width-x)
-			g(pifn.blit, x+ctx.position.x, y+ctx.position.y, str, bstr, fstr)
+			q(pifn.blit, x+ctx.position.x, y+ctx.position.y, str, bstr, fstr)
 		else
 			fstr = fstr:gsub(" ", "F")
 			for i=1, #str do
 				if bstr:sub(i, i) ~= " " then
 					local bg = tonumber(bstr:sub(i,i), 16) or 0
 					local fg = tonumber(fstr:sub(i,i), 16) or 15
-					g(pifn.drawPixel, x+i-1, y, bg, str:sub(i, i), fg)
+					q(pifn.drawPixel, x+i-1, y, bg, str:sub(i, i), fg)
 				end
 			end
 		end
@@ -224,7 +224,8 @@ context.getContext = function(parent, x, y, l, h)
 		if x >= ctx.width then x, y = 0, y+1 end
 		return x, y
 	end
-	ifn.drawData = function(g, data)
+	ifn.drawData = function(q, data)
+		checkInitialized(internals)
 		if pifn.drawData and internals.optimizationsEnabled then
 			local nx, ny = cXY(ctx, data.x, data.y)
 			local trimmedData = {x=nx+ctx.position.x, y=ny+ctx.position.y}
@@ -236,12 +237,12 @@ context.getContext = function(parent, x, y, l, h)
 					trimmedData[y][x] = {table.unpack(data[y][x])}
 				end
 			end
-			g(pifn.drawData, trimmedData)
+			q(pifn.drawData, trimmedData)
 		else
 			for y=0, #data do
 				for x=0, #data[y] do
 					if data[y][x][1] and data[y][x][2] then
-						g(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+						q(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
 					end
 				end
 			end
@@ -268,6 +269,13 @@ context.getContext = function(parent, x, y, l, h)
 	ctx.setAutoSize = function(w, h)
 		if w~=nil then ctx.useParentwidth = w end
 		if h~=nil then ctx.useParentheight = h end
+	end
+	ctx.setDimensions = function(l, h)
+		ctx.width = math.abs(l)
+		ctx.height = math.abs(h)
+	end
+	ctx.setPosition = function(x, y)
+		ctx.position = {x=x, y=y}
 	end
 	
 	ctx.setScroll = function(x, y)
@@ -363,8 +371,8 @@ context.getNativeContext = function(display)
 			checkCanStartDraw(internals)
 			local ox, oy = term.getCursorPos()
 			local ob, of = term.getBackgroundColor(), term.getTextColor()
-			ctx.INTERNALS.drawing = true
-			ctx.INTERNALS.backup = {
+			internals.drawing = true
+			internals.backup = {
 				pos = {x=ox, y=oy},
 				theme = {bg=ob, fg=of}
 			}
@@ -379,9 +387,10 @@ context.getNativeContext = function(display)
 		end
 		ctx.endDraw = function()
 			checkCanEndDraw(internals)
-			local bkp = ctx.INTERNALS.backup
+			internals.drawing = false
+			local bkp = internals.backup
 			term.setCursorPos(bkp.pos.x, bkp.pos.y)
-			if ctx.INTERNALS.isColor then
+			if internals.isColor then
 				term.setBackgroundColor(bkp.theme.bg)
 				term.setTextColor(bkp.theme.fg)
 			end
@@ -419,7 +428,7 @@ context.getNativeContext = function(display)
 			end
 		end})
 		
-		ifn.drawPixel = function(g, x, y, color, char, fg)
+		ifn.drawPixel = function(q, x, y, color, char, fg)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -437,7 +446,7 @@ context.getNativeContext = function(display)
 			end
 			term.set(x+1, y+1, char or " ")
 		end
-		ifn.drawFilledRect = function(g, x, y, l, h, color, char, fg)
+		ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -458,7 +467,7 @@ context.getNativeContext = function(display)
 			end
 			gpu.fill(x+1, y+1, l, h, char or " ")
 		end
-		ifn.blit = function(g, x, y, str, bstr, fstr)
+		ifn.blit = function(q, x, y, str, bstr, fstr)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -499,7 +508,7 @@ context.getNativeContext = function(display)
 			end
 			blitIf()
 		end
-		ifn.drawData = function(g, data)
+		ifn.drawData = function(q, data)
 			local trimmedData = {x=data.x, y=data.y} --Should be squared
 			for y=0, #data do
 				trimmedData[y] = {}
@@ -578,10 +587,9 @@ context.getNativeContext = function(display)
 		end
 		ctx.startDraw = function()
 			checkCanStartDraw(internals)
-			if term.getSimulated() then
-				internals.drawing = true 
-				return 
-			end
+			internals.drawing = true
+			
+			if term.getSimulated() then return end
 			
 			local ob, of = gpu.getBackground(), gpu.getForeground()
 			local depth = gpu.getDepth()
@@ -590,7 +598,6 @@ context.getNativeContext = function(display)
 			local shouldBind = addr~=oscreen
 			if shouldBind then gpu.bind(addr, false) end
 			
-			internals.drawing = true
 			internals.backup = {
 				depth = depth,
 				screen = oscreen,
@@ -608,7 +615,7 @@ context.getNativeContext = function(display)
 			error("Cannot set autosize on native conext")
 		end
 		ctx.endDraw = function()
-			checkCanEndDraw(ctx)
+			checkCanEndDraw(internals)
 			internals.drawing = false
 
 			if term.getSimulated() then return end

@@ -28,6 +28,7 @@ bctx.wrapContext = function(ctx, es)
 	local onclick, onrelease, ondragstart, ondragover, ondragend
 	
 	ifn.drawPixel = function(q, x, y, color, char, fg)
+		checkInitialized()
 		char = char and charVisible and tostring(char)
 		x = (ctx.INTERNALS.xinverted and ctx.width-x-1) or x
 		if x>=0 and y>=0 then
@@ -45,6 +46,7 @@ bctx.wrapContext = function(ctx, es)
 	end
 	
 	ctx.clear = function(color)
+		checkInitialized()
 		contextColor = color
 		buffer = {}
 	end
