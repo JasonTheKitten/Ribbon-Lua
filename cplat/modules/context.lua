@@ -47,7 +47,7 @@ context.getContext = function(parent, x, y, l, h)
 
 	local ctx = {
 		parent = parent,
-		position = {x=x or 0,y=y or 0},
+		position = {x=x or 0, y=y or 0},
 		scroll = {x=0, y=0},
 		width = l or (parent and parent.width),
 		height = h or (parent and parent.height),
@@ -220,6 +220,7 @@ context.getContext = function(parent, x, y, l, h)
 	
 	ctx.drawData = function(data)
 		runIFN(ifn.drawData, data)
+		if not data[0] then return end
 		local x, y = data.x+#data[#data], data.y+#data
 		if x >= ctx.width then x, y = 0, y+1 end
 		return x, y
@@ -240,7 +241,9 @@ context.getContext = function(parent, x, y, l, h)
 			q(pifn.drawData, trimmedData)
 		else
 			for y=0, #data do
+				if not data[y] then break end
 				for x=0, #data[y] do
+					if not data[y][x] then break end
 					if data[y][x][1] and data[y][x][2] then
 						q(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
 					end

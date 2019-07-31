@@ -32,7 +32,10 @@ end
 
 function Component:calcSize(size)
 	if size then
-		class.checkType(size, SizePosGroup, 3, "SizePosGroup")
+		class.checkType(size, SizePosGroup, 3, "SizePosGroup", Size)
+		if size:isA(Size) then
+			size = class.new(SizePosGroup, size)
+		end
 	else
 		size = class.new(SizePosGroup)
 	end

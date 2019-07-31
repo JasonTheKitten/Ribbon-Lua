@@ -23,6 +23,21 @@ util.ipairs = function(tbl)
 	return ipairs(util.copy(tbl))
 end
 
+util.unpackNoNil = function(tbl, pos)
+	local unpacked, pos, high = {}, pos-1, 0
+	for k, v in pairs(tbl) do
+		if type(k) == "number" and k>pos then
+			unpacked[k-pos] = v
+			
+			high = math.max(high, k-pos)
+		end
+	end
+	for i=1, high do
+		unpacked[i] = unpacked[i] or false
+	end
+	return table.unpack(unpacked)
+end
+
 util.stringToTable = function(s, r, t)
 	t = t or {}
 	for i=1, #s do
@@ -164,6 +179,7 @@ util.serialiseJSON = util.serializeJSON
 util.runIFN = function(...)
 	--Run ISomething FSomething NSomething
 	--This is why we need better function names (:
+	--Maybe change the name on a major version update someday?
 	local qt = {}
 	local function q(...)
 		table.insert(qt, 1, {...})
@@ -173,7 +189,7 @@ util.runIFN = function(...)
 		local qt1 = qt[1]
 		table.remove(qt, 1)
 		if qt1 and qt1[1] then
-			qt1[1](q, table.unpack(qt1, 2))
+			qt1[1](q, util.unpackNoNil(qt1, 2))
 		end
 	end
 end

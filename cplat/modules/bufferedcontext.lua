@@ -82,7 +82,7 @@ bctx.wrapContext = function(ctx, es)
 				local bx = x+ctx.scroll.x+px
 				data[y][x] = {}
 				if buffer[by] and buffer[by][bx] then
-					data[y][x] = {buffer[by][bx].char, buffer[by][bx].background or 0, buffer[by][bx].foreground or 15}
+					data[y][x] = {buffer[by][bx].char, buffer[by][bx].background or contextColor, buffer[by][bx].foreground or 15}
 				else
 					data[y][x] = {" ", contextColor}
 				end

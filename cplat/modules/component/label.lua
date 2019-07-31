@@ -1,9 +1,6 @@
 local cplat = require()
 
---local bctx = cplat.require "bufferedcontext"
 local class = cplat.require "class"
-local ctx = cplat.require "context"
-local process = cplat.require "process"
 local util = cplat.require "util"
 
 local Size = cplat.require("class/size").Size
@@ -17,31 +14,48 @@ local Label = {}
 label.Label = Label
 
 Label.cparents = {Component}
-function Label:__call(parent, text)
+function Label:__call(parent, text, enableWrap)
 	class.checkType(parent, Component, 3, "Component")
-	
-	self.children = {}
-	self.eventSystem = process.createEventSystem()
-	self.context = parent.context
+	Component.__call(self, parent, text)
 	
 	self.text = text
-	
-	table.insert(parent.children, 1, self)
-	
-	parent.eventSystem.addEventListener(nil, function(d, e)
-		self.eventSystem.fire(e, d) --TODO: Filter
-	end)
+	self.enableWrap = true--enableWrap or false
 end
 
 --IFN functions
+local function internalSizeProc(self, size, f)
+	local text, lastSpaceBroke = self.text, false
+	for i=1, #text do
+		local char = text:sub(i, i)
+		if char == " " then
+			if not lastSpaceBroke then
+				local done = (text:sub(2, #text).." "):find(" ")
+				if done+size.position.x >= size.size.width and not size:expandWidth(done) then
+					lastSpaceBroke = true
+					size:incLine()
+				else
+					if f then f(" ") end
+					size:incCursor()
+				end
+			end
+		else
+			if f then f(char) end
+			lastSpaceBroke = size:incCursor()
+		end
+	end
+end
 function Label.calcSizeIFN(q, self, size)
-	self.position = size.position:clone()
-
-	size:add(class.new(Size, #self.text, 0))
+	self.size = size:cloneAll()
+	
+	internalSizeProc(self, size)
+	
 	for k, v in pairs(self.children) do
 		q(v.calcSizeIFN, v, size)
 	end
 end
 function Label.drawIFN(q, self, hbr)
-	self.context.drawText(self.position.x, self.position.y, self.text, 0, 15)
+	local size = self.size:cloneAll()
+	internalSizeProc(self, size, function(char)
+		self.context.drawPixel(size.position.x, size.position.y, nil, (char~="\t" and char) or " ")
+	end)
 end

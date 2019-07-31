@@ -1,8 +1,7 @@
 local cplat = require()
 
---local bctx = cplat.require "bufferedcontext"
 local class = cplat.require "class"
-local ctx = cplat.require "context"
+local bctx = cplat.require "bufferedcontext"
 local process = cplat.require "process"
 local util = cplat.require "util"
 
@@ -23,9 +22,10 @@ function BlockComponent:__call(parent)
 	
 	self.children = {}
 	self.eventSystem = process.createEventSystem()
-	self.context = ctx.getContext(parent.context, 0, 0, 0, 0)
+	self.context = bctx.getContext(parent.context, 0, 0, 0, 0, self.eventSystem)
 	
-	self.size = class.new(SizePosGroup, class.new(Size, 0, 0))
+	self.size = class.new(Size, 0, 0)
+	self.color = 0
 	
 	table.insert(parent.children, 1, self)
 	
@@ -58,37 +58,46 @@ function BlockComponent:getMinSize()
 	return self.minSize
 end
 
-function BlockComponent:setPreferredSize(size)
+function BlockComponent:setMaxSize(size)
 	if size then class.checkType(size, Size, 3, "Size") end
-	self.preferredSize = size
+	self.maxSize = size
 end
-function BlockComponent:getPreferredSize()
-	return self.preferredSize
+function BlockComponent:getMaxSize()
+	return self.maxSize
 end
 
 --IFN functions
 function BlockComponent.calcSizeIFN(q, self, size)
+	if self.size.width==0 or self.size.height==0 then
+		if self.preferredSize then
+			self.size = self.preferredSize:clone()
+		else
+			self.size = class.new(Size, 0, 0)
+		end
+	end
 	q(function()
 		if self.minSize then self.size = self.size:max(self.minSize) end
 		if self.maxSize then self.size = self.size:min(self.maxSize) end
 		size:add(self.size)
 	end)
+	local msize = class.new(SizePosGroup, self.size, nil, size.size)
 	for k, v in ipairs(self.children) do
-		q(v.calcSizeIFN, v, self.size)
+		q(v.calcSizeIFN, v, msize)
 	end
 end
 function BlockComponent.drawIFN(q, self, hbr)
 	--Ensure we draw within bounds
-	local size = self.size:toSize()
+	local size = self.size
 	self.context.setDimensions(size.width, size.height)
 	
 	self.context.startDraw()
 	q(function()
+		self.context.drawBuffer()
 		self.context.endDraw()
 	end)
 	
 	--Test: draw random color
-	self.context.clear(math.random(0, 15))
+	if self.color then self.context.clear(self.color) end
 	
 	for k, v in ipairs(self.children) do
 		q(v.drawIFN, v, size)

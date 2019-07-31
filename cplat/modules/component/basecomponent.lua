@@ -6,6 +6,10 @@ local contextapi = cplat.require "context"
 local displayapi = cplat.require "display"
 local process = cplat.require "process"
 
+local Size = cplat.require("class/size").Size
+local SizePosGroup = cplat.require("class/sizeposgroup").SizePosGroup
+
+local BlockComponent = cplat.require("component/blockcomponent").BlockComponent
 local Component = cplat.require("component/component").Component
 
 local basec = ...
@@ -14,7 +18,7 @@ basec.BaseComponent = BaseComponent
 
 BaseComponent.cparents = {Component}
 function BaseComponent:__call(ctx, es)
-	self.context = bctx.getContext(ctx, 0, 0, nil, nil, process)
+	self.context = ctx--bctx.getContext(ctx, 0, 0, nil, nil, process)
 	self.children = {}
 	self.eventSystem = process.createEventSystem()
 	
@@ -23,6 +27,16 @@ function BaseComponent:__call(ctx, es)
 	end)
 end
 
+function BaseComponent:getDefaultComponent()
+	local dc = class.new(BlockComponent, self)
+	local msize = class.new(Size, 51, 19)
+	dc:setMinSize(msize)
+	dc:setMaxSize(msize)
+	dc:setPreferredSize(msize)
+	dc:setSize(msize)
+	
+	return dc
+end
 function BaseComponent.drawIFN(q, self, hbr)
 	self.context.startDraw()
 	q(function()
