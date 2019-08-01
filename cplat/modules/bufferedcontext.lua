@@ -10,15 +10,16 @@ local bctx = ...
 bctx.wrapContext = function(ctx, es)
 	if not (ctx and es) then error("Arguments should be ctx, es", 2) end
 	
-	if ctx.INTERNALS.isNative then
-		error("A buffered context can not be created with a native context; Please use gui.getContext to wrap the native context.", 2)
+	local internals = ctx.INTERNALS
+	if internals.isNative then
+		error("A buffered context can not be created with a native context; Please use bufferedcontext.getContext to wrap the native context.", 2)
 	end
-	ctx.INTERNALS.optimizationsEnabled = false
+	internals.optimizationsEnabled = false
 	
-	local ifn = ctx.INTERNALS.IFN
+	local ifn = internals.IFN
 	
 	local function checkInitialized()
-		if not ctx.INTERNALS.drawing then
+		if not internals.drawing then
 			error("Attempt to use context while not drawing", 3)
 		end
 	end
@@ -30,13 +31,13 @@ bctx.wrapContext = function(ctx, es)
 	ifn.drawPixel = function(q, x, y, color, char, fg)
 		checkInitialized()
 		char = char and charVisible and tostring(char)
-		x = (ctx.INTERNALS.xinverted and ctx.width-x-1) or x
+		x = (internals.xinverted and ctx.width-x-1) or x
 		if x>=0 and y>=0 then
 			buffer[y] = buffer[y] or {}
 			buffer[y][x] = buffer[y][x] or {}
 			buffer[y][x].char = char or buffer[y][x].char
-			buffer[y][x].foreground = fg or buffer[y][x].foreground
-			buffer[y][x].background = color or buffer[y][x].background
+			buffer[y][x].foreground = fg or internals.CONFIG.defaultTextColor or buffer[y][x].foreground
+			buffer[y][x].background = color or internals.CONFIG.defaultBackgroundColor or buffer[y][x].background
 			buffer[y][x].onclick = onclick or buffer[y][x].onclick
 			buffer[y][x].onrelease = onrelease or buffer[y][x].onrelease
 			buffer[y][x].ondragstart = ondragstart or buffer[y][x].ondragstart
@@ -47,11 +48,24 @@ bctx.wrapContext = function(ctx, es)
 	
 	ctx.clear = function(color)
 		checkInitialized()
-		contextColor = color
+		contextColor = color or internals.CONFIG.defaultBackgroundColor
 		buffer = {}
 	end
 	ctx.setContextColor = function(color)
-		contextColor = color
+		contextColor = color or internals.CONFIG.defaultBackgroundColor
+	end
+	ctx.setColors = function(color, fg)
+		internals.CONFIG.defaultBackgroundColor = color or internals.CONFIG.defaultBackgroundColor
+		internals.CONFIG.defaultTextColor = fg or internals.CONFIG.defaultTextColor
+		if color == -1 then internals.CONFIG.defaultBackgroundColor = nil end
+		if fg == -1 then internals.CONFIG.defaultTextColor = nil end
+	end
+	
+	ctx.setClickFunction = function(f)
+		onclick = f
+	end
+	ctx.getClickFunction = function(f)
+		return f
 	end
 	
 	ctx.setPixelsVisible = function(b)

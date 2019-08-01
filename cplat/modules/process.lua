@@ -44,7 +44,7 @@ process.execute = function(f, ...)
 		catchEvents = function()
 			eq = {}
 			natives.os.queueEvent("q_bottom", cid)
-			local tid = natives.os.startTimer(.05)
+			local tid = natives.os.startTimer(.3) --.05
 			local e = {coroutine.yield()}
 			while not ((e[1]=="q_bottom" and e[2]==cid) or (e[1] == "timer" and e[2] == tid)) do
 				if e[1] == "terminate" then terminate() end
@@ -137,17 +137,17 @@ process.createEventSystem = function()
 		local id = mid or id
 		if d then
 			if e then
-				eventSystem.listeners[e] = eventSystem.listeners[e] or {}
-				eventSystem.listeners[e][id] = f
-			else
-				eventSystem.rlisteners[id] = f
-			end
-		else
-			if e then
 				eventSystem.defaultListeners[e] = eventSystem.defaultListeners[e] or {}
 				eventSystem.defaultListeners[e][id] = f
 			else
 				eventSystem.defaultRListeners[id] = f
+			end
+		else
+			if e then
+				eventSystem.listeners[e] = eventSystem.listeners[e] or {}
+				eventSystem.listeners[e][id] = f
+			else
+				eventSystem.rlisteners[id] = f
 			end
 		end
 		return id
@@ -167,9 +167,9 @@ process.createEventSystem = function()
 	eventSystem.getInterruptsEnabled = function()
 		return eventSystem.interruptsEnabled
 	end
-	eventSystem.getLatestEvent = function()
+	--[[eventSystem.getLatestEvent = function()
 		return eventSystem.latestEvent
-	end
+	end]]
 	
 	return eventSystem, function(tbl)
 		--Event System Installer

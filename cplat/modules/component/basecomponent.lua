@@ -23,13 +23,13 @@ function BaseComponent:__call(ctx, es)
 	self.eventSystem = process.createEventSystem()
 	
 	es.addEventListener(nil, function(d, e)
-		self.eventSystem.fire(e, d) --TODO: Filter
+		self.eventSystem.fireEvent(e, d) --TODO: Filter
 	end)
 end
 
 function BaseComponent:getDefaultComponent()
 	local dc = class.new(BlockComponent, self)
-	local msize = class.new(Size, 51, 19)
+	local msize = class.new(Size, dc.context.parent.width, dc.context.parent.height) --TODO: Not be lazy
 	dc:setMinSize(msize)
 	dc:setMaxSize(msize)
 	dc:setPreferredSize(msize)

@@ -256,11 +256,21 @@ context.getContext = function(parent, x, y, l, h)
 		internals.CONFIG.defaultBackgroundColor = color or internals.CONFIG.defaultBackgroundColor
 		internals.CONFIG.defaultTextColor = fg or internals.CONFIG.defaultTextColor
 	end
+	ctx.getColors = function(color, fg)
+		return internals.CONFIG.defaultBackgroundColor, internals.CONFIG.defaultTextColor
+	end
+	
 	ctx.setTextColor = function(color)
 		internals.CONFIG.defaultTextColor = color or internals.CONFIG.defaultTextColor
 	end
+	ctx.getTextColor = function()
+		return internals.CONFIG.defaultTextColor
+	end
 	ctx.setBackgroundColor = function(color)
 		internals.CONFIG.defaultBackgroundColor = color or internals.CONFIG.defaultBackgroundColor
+	end
+	ctx.getBackgroundColor = function()
+		return internals.CONFIG.defaultBackgroundColor
 	end
 	
 	ctx.update = function()

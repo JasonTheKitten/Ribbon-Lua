@@ -25,12 +25,11 @@ function BlockComponent:__call(parent)
 	self.context = bctx.getContext(parent.context, 0, 0, 0, 0, self.eventSystem)
 	
 	self.size = class.new(Size, 0, 0)
-	self.color = 0
 	
 	table.insert(parent.children, 1, self)
 	
 	parent.eventSystem.addEventListener(nil, function(d, e)
-		self.eventSystem.fire(e, d) --TODO: Filter
+		self.eventSystem.fireEvent(e, d) --TODO: Filter
 	end)
 end
 
@@ -68,6 +67,7 @@ end
 
 --IFN functions
 function BlockComponent.calcSizeIFN(q, self, size)
+	size = self.sizePosGroup or size
 	if self.size.width==0 or self.size.height==0 then
 		if self.preferredSize then
 			self.size = self.preferredSize:clone()
@@ -75,9 +75,11 @@ function BlockComponent.calcSizeIFN(q, self, size)
 			self.size = class.new(Size, 0, 0)
 		end
 	end
+	self.position = size.position:clone()
 	q(function()
-		if self.minSize then self.size = self.size:max(self.minSize) end
-		if self.maxSize then self.size = self.size:min(self.maxSize) end
+		if self.preferredSize then self.size:set(self.size:max(self.preferredSize)) end
+		if self.minSize then self.size:set(self.size:max(self.minSize)) end
+		if self.maxSize then self.size:set(self.size:min(self.maxSize)) end
 		size:add(self.size)
 	end)
 	local msize = class.new(SizePosGroup, self.size, nil, size.size)
@@ -88,16 +90,21 @@ end
 function BlockComponent.drawIFN(q, self, hbr)
 	--Ensure we draw within bounds
 	local size = self.size
+	local position = self.position
+	self.context.setPosition(position.x, position.y)
 	self.context.setDimensions(size.width, size.height)
 	
+	local obg, ofg = self.context.getColors()
+	local dbg, dfg = self.context.parent.getColors()
+	self.context.setColors(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
 	q(function()
 		self.context.drawBuffer()
 		self.context.endDraw()
+		self.context.setColors(obg, ofg)
 	end)
 	
-	--Test: draw random color
-	if self.color then self.context.clear(self.color) end
+	self.context.clear()
 	
 	for k, v in ipairs(self.children) do
 		q(v.drawIFN, v, size)

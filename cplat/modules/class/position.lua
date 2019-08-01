@@ -18,7 +18,7 @@ function Position:add(vec)
 	if vec:isA(Position) then
 		self.x, self.y = self.x+vec.x, self.y+vec.y
 	elseif vec:isA(Size) then
-		self.x, self.y = self.x+vec.width, self.y+vec.height
+		self.x, self.y = self.x+vec.width, self.y+vec.height-1
 	end
 	return self
 end
