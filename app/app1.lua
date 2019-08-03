@@ -1,11 +1,12 @@
 local cplat = require()
 local process = cplat.require "process"
-local gui = cplat.require "gui"
+local context = cplat.require "context"
+local display = cplat.require "display"
 local bctx = cplat.require "bufferedcontext"
 
-local display = gui.getDisplay(gui.getDefaultDisplayID())
-local octx = gui.getNativeContext(display)
-local octx2 = gui.getContext(octx, 0, 0)
+local display = display.getDisplay(display.getDefaultDisplayID())
+local octx = context.getNativeContext(display)
+local octx2 = context.getContext(octx, 0, 0)
 local ctx = bctx.getContext(octx2, 0, 0, nil, nil, process)
 
 octx.startDraw()
@@ -15,14 +16,13 @@ ctx.startDraw()
 octx2.update()
 ctx.update()
 while true do
-	for y = 0, ctx.HEIGHT-1 do
-		for x = 0, ctx.WIDTH-1 do
+	for y = 0, ctx.height-1 do
+		for x = 0, ctx.width-1 do
 			ctx.drawPixel(x, y, math.random(0, 15), string.char(math.random(31, 255)), math.random(0, 15))
 		end
 	end
 
 	ctx.drawBuffer()
-	coroutine.yield()
 end
 
 ctx.endDraw()

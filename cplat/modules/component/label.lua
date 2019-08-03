@@ -1,6 +1,7 @@
 local cplat = require()
 
 local class = cplat.require "class"
+local debugger = cplat.require "debugger"
 local util = cplat.require "util"
 
 local Size = cplat.require("class/size").Size
@@ -33,7 +34,7 @@ local function internalSizeProc(self, size, f)
 		elseif char == " " then
 			if not lastSpaceBroke then
 				local done = (text:sub(2, #text).." "):find(" ")
-				local needed = done+size.position.x-size.size.width
+				local needed = done-size.size.width
 				if needed >= 0 and not size:expandWidth(needed) then
 					lastSpaceBroke = true
 					size:incLine(self.enableWrap)

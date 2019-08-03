@@ -1,5 +1,7 @@
 --TODO: Close all contexts and handles when an error occurs.
 
+print("Loading, thank you for your patience...")
+
 --App Info
 local APP = {
 	TITLE = "APPLICATION",

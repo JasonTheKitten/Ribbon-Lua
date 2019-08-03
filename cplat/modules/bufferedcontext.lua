@@ -4,6 +4,7 @@
 local cplat = require()
 
 local contextapi = cplat.require "context"
+local debugger = cplat.require "debugger"
 
 local bctx = ...
 
@@ -27,6 +28,7 @@ bctx.wrapContext = function(ctx, es)
 	local buffer = {}
 	local charVisible, contextColor = true, nil
 	local onclick, onrelease, ondragstart, ondragover, ondragend
+	local defaultFunctions = {}
 	
 	ifn.drawPixel = function(q, x, y, color, char, fg)
 		checkInitialized()
@@ -50,6 +52,12 @@ bctx.wrapContext = function(ctx, es)
 		checkInitialized()
 		contextColor = color or internals.CONFIG.defaultBackgroundColor
 		buffer = {}
+		
+		defaultFunctions.onclick = onclick
+		defaultFunctions.onrelease = onrelease
+		defaultFunctions.ondragstart = ondragstart
+		defaultFunctions.ondragover = ondragover
+		defaultFunctions.ondragend = ondragend
 	end
 	ctx.setContextColor = function(color)
 		contextColor = color or internals.CONFIG.defaultBackgroundColor
@@ -106,17 +114,24 @@ bctx.wrapContext = function(ctx, es)
 		return data
 	end
 	
-	local function linkT(e, t)
-		es.addEventListener(e, function(e)
+	local function linkT(en, t)
+		t = t or en
+		es.addEventListener(en, function(e)
             local x = e.x-ctx.position.x-ctx.scroll.x
     		local y = e.y-ctx.position.y-ctx.scroll.y
     		if x>=0 and x<ctx.width and y>=0 and y<ctx.height then
+				local e = {
+					x = x, y = y,
+					button = e.button,
+					display = e.display,
+					process = es,
+					context = ctx,
+					originevent = e.originevent or e
+				}
     			if buffer[y] and buffer[y][x] and buffer[y][x][t] then
-    				buffer[y][x][t]({
-    					x = x,
-    					y = y,
-    					button = e.button
-    				})
+    				buffer[y][x][t](t, e)
+				elseif defaultFunctions[t] then
+					defaultFunctions[t](t, e)
     			end
     		end
 	   end)
@@ -125,6 +140,11 @@ bctx.wrapContext = function(ctx, es)
 	linkT("mouse_click", "onclick")
 	linkT("mouse_up", "onrelease")
 	linkT("mouse_drag", "ondragover")
+	
+	--Cheats
+	linkT("onclick")
+	linkT("onrelease")
+	linkT("ondragover")
 	
 	return ctx
 end

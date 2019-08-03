@@ -29,7 +29,6 @@ process.execute = function(f, ...)
 	local function resume()
 		for i=1, #eq do
 			process.fireEvent("rawevent", {
-				event = eq[i], 
 				rawevent = eq[i],
 				parent = process
 			})
@@ -100,6 +99,7 @@ process.createEventSystem = function()
 		d.preventDefault = function()
 			eventSystem.doDefault = false
 		end
+		d.name = e
 		if not eventSystem.interruptsEnabled then return end
 		eventSystem.doDefault = true
 		local function execL(v)
@@ -251,8 +251,8 @@ if isCC then
 		process.fireEvent("mouse_click", {
 			parent = process,
 			rawevent = e,
-			x = e[3],
-			y = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
 			button = e[2],
 			display = 1
 		})
@@ -261,8 +261,8 @@ if isCC then
 		local evd = {
 			parent = process,
 			rawevent = e,
-			x = e[3],
-			y = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
 			button = 1,
 			display = nil
 		}
@@ -273,9 +273,9 @@ if isCC then
 		process.fireEvent("mouse_up", {
 			parent = process,
 			rawevent = e,
-			x = e[2],
-			y = e[3],
-			button = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
+			button = e[2],
 			display = nil
 		})
 	end)
@@ -283,9 +283,9 @@ if isCC then
 		process.fireEvent("mouse_drag", {
 			parent = process,
 			rawevent = e,
-			x = e[2],
-			y = e[3],
-			button = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
+			button = e[2],
 			display = nil
 		})
 	end)
@@ -386,8 +386,8 @@ else
 		process.fireEvent("mouse_click", {
 			parent = process,
 			rawevent = e,
-			x = e[2],
-			y = e[3],
+			x = e[2]-1,
+			y = e[3]-1,
 			button = e[4],
 			display = nil
 		})
@@ -396,8 +396,8 @@ else
 		process.fireEvent("mouse_up", {
 			parent = process,
 			rawevent = e,
-			x = e[2],
-			y = e[3],
+			x = e[2]-1,
+			y = e[3]-1,
 			button = e[4],
 			display = nil
 		})
@@ -406,8 +406,8 @@ else
 		process.fireEvent("mouse_drag", {
 			parent = process,
 			rawevent = e,
-			x = e[2],
-			y = e[3],
+			x = e[2]-1,
+			y = e[3]-1,
 			button = e[4],
 			display = nil
 		})

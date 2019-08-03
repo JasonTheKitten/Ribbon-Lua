@@ -589,6 +589,7 @@ context.getNativeContext = function(display)
 				end
 			end
 			for bg, fgs in pairs(groups) do
+				--coroutine.yield() --TODO: ?
 				term.setBackground(bg or 0)
 				for fg, gps in pairs(fgs) do
 					term.setForeground(fg or 15)
