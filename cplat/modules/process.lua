@@ -107,7 +107,7 @@ process.createEventSystem = function()
 				local ok, err = pcall(v, ...)
 				if not ok then debugger.error(err) end
 			end)
-			coroutine.resume(c, d, e)
+			coroutine.resume(c, e, d)
 			if coroutine.status(c) ~= "dead" then
 				debugger.warn("Interrupt yielded before completion; Execution will not finish.")
 			end

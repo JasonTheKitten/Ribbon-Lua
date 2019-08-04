@@ -20,7 +20,7 @@ local Span = cplat.require("component/span").Span
 local COLORS = statics.get("colors")
 
 
-local running, doRefresh, menuOpen = true, true, false
+local running, doRefresh, menuOpen, doMenuOpen = true, true, false, false
 BaseComponent.execute(function(gd)
 	local baseContext = gd(0)
 	
@@ -40,15 +40,19 @@ BaseComponent.execute(function(gd)
 	sidebar:setSizeAndLocation(class.new(Size, #menuTitle, viewport.size.height - 1), 0, 0, 1, 0)
 	sidebar:setColor(COLORS.LIGHTGRAY)
 	
-	local test = class.new(Label, sidebar, menuTitle)
+	class.new(Label, sidebar, menuTitle)
 	--End
 	
 	contentpane:setSize(viewport:getSize())
 	
 	contentpane:onClick(function()
-		menuOpen = false
-		sidebar:delete()
-		doRefresh = true
+		menuOpen = doMenuOpen
+		if doMenuOpen then 
+			sidebar:setParent(viewport)
+		else
+			sidebar:delete()
+		end
+		doRefresh, doMenuOpen = true, false
 	end)
 	
 	titlebar:setSize(class.new(Size, viewport.size.width, 1))
@@ -57,14 +61,7 @@ BaseComponent.execute(function(gd)
 	
 	hamburgerIcon:setColor(COLORS.CYAN)
 	hamburgerIcon:onClick(function()
-		menuOpen = not menuOpen
-		if menuOpen then
-			sidebar:setParent(viewport)
-		else
-			sidebar:delete()
-		end
-		
-		doRefresh = true
+		if not menuOpen then doMenuOpen = true end
 	end)
 	
 	xButton:setColor(COLORS.RED)

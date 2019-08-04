@@ -14,19 +14,19 @@ local function put(data)
 end
 
 debugger.error = function(data)
-	put("[ERROR]: "..data)
+	put("[ERROR]: "..tostring(data))
 end
 
 debugger.warn = function(data)
-	put("[WARN]: "..data)
+	put("[WARN]: "..tostring(data))
 end
 
 debugger.info = function(data)
-	put("[INFO]: "..data)
+	put("[INFO]: "..tostring(data))
 end
 
 debugger.log = function(data)
-	put("[LOG]: "..data)
+	put("[LOG]: "..tostring(data))
 end
 
 debugger.setDebugFile = function(path)

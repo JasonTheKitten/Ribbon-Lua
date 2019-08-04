@@ -23,20 +23,10 @@ BlockComponent.cparents = {Component}
 function BlockComponent:__call(parent)
 	class.checkType(parent, Component, 3, "Component")
 	
-	self.parent = parent
-	self.children = {}
-	self.functions = {}
-	self.eventSystem = process.createEventSystem()
+	Component.__call(self, parent)
+	
 	self.context = bctx.getContext(parent.context, 0, 0, 0, 0, parent.eventSystem)
-	
 	self.size = class.new(Size, 0, 0)
-	
-	table.insert(parent.children, 1, self)
-	
-	parent.eventSystem.addEventListener(nil, function(d, e)
-		debugger.log(e)
-		--self.eventSystem.fireEvent(e, d) --TODO: Filter
-	end)
 end
 
 function BlockComponent:getSize()
@@ -111,14 +101,23 @@ function BlockComponent.drawIFN(q, self, hbr)
 	local obg, ofg = self.context.getColors()
 	local dbg, dfg = self.context.parent.getColors()
 	local ocf = self.context.getClickFunction()
-	self.context.setClickFunction(self.functions.onclick)
+	self.context.setClickFunction(self.handlers.onclick)
 	self.context.setColors(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
 	q(function()
-		self.context.drawBuffer()
 		self.context.endDraw()
 		self.context.setColors(obg, ofg)
 		self.context.setClickFunction(ocf)
+		
+		local ocfp
+		if self.context.parent.setClickFunction then
+			ocfp = self.context.parent.getClickFunction()
+			self.context.parent.setClickFunction(self.context.triggers.onclick)
+		end
+		self.context.drawBuffer()
+		if ocfp then
+			self.context.parent.setClickFunction(ocfp)
+		end
 	end)
 	
 	self.context.clear()

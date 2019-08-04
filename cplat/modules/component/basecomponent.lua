@@ -20,6 +20,8 @@ BaseComponent.cparents = {Component}
 function BaseComponent:__call(ctx, es)
 	self.context = ctx--bctx.getContext(ctx, 0, 0, nil, nil, process)
 	self.children = {}
+	self.handlers = {}
+	self.functions = {}
 	self.eventSystem = process
 end
 

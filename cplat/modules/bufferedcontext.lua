@@ -48,6 +48,10 @@ bctx.wrapContext = function(ctx, es)
 		end
 	end
 	
+	ctx.getPixel = function(x, y)
+		return buffer[y] and buffer[y][x] or {}
+	end
+	
 	ctx.clear = function(color)
 		checkInitialized()
 		contextColor = color or internals.CONFIG.defaultBackgroundColor
@@ -114,9 +118,8 @@ bctx.wrapContext = function(ctx, es)
 		return data
 	end
 	
-	local function linkT(en, t)
-		t = t or en
-		es.addEventListener(en, function(e)
+	local function getT(t)
+		return function(n, e)
             local x = e.x-ctx.position.x-ctx.scroll.x
     		local y = e.y-ctx.position.y-ctx.scroll.y
     		if x>=0 and x<ctx.width and y>=0 and y<ctx.height then
@@ -134,17 +137,22 @@ bctx.wrapContext = function(ctx, es)
 					defaultFunctions[t](t, e)
     			end
     		end
-	   end)
+	   end
+	end
+	local function linkT(en, t)
+		t = t or en
+		es.addEventListener(en, getT(t))
 	end
 	
 	linkT("mouse_click", "onclick")
 	linkT("mouse_up", "onrelease")
 	linkT("mouse_drag", "ondragover")
 	
-	--Cheats
-	linkT("onclick")
-	linkT("onrelease")
-	linkT("ondragover")
+	ctx.triggers = {
+		onclick = getT("onclick"),
+		onrelease = getT("onrelease"),
+		ondragover = getT("ondragover")
+	}
 	
 	return ctx
 end

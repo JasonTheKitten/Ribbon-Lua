@@ -19,20 +19,24 @@ component.Component = Component
 
 Component.cparents = {class.Class}
 function Component:__call(parent)
-	class.checkType(parent, Component, 4, "Component")
+	class.checkType(parent, Component, 3, "Component")
 	
 	self.parent = parent
 	self.children = {}
 	self.functions = {}
+	self.handlers = {}
 	self.eventSystem = process.createEventSystem()
 	self.context = parent.context
 	
-	table.insert(parent.children, 1, self)
+	self.handlers.onclick = function(e, d)
+		self.eventSystem.fireEvent(e, d)
+		if self.functions.onclick then self.functions.onclick(e, d) end
+		if self.parent and self.parent.handlers.onclick then
+			self.parent.handlers.onclick(e, d)
+		end
+	end
 	
-	parent.eventSystem.addEventListener(nil, function(d, e)
-		debugger.log(e)
-		--self.eventSystem.fireEvent(e, d) --TODO: Filter
-	end)
+	table.insert(parent.children, 1, self)
 end
 
 function Component:removeChild(child)
@@ -115,11 +119,7 @@ function Component.drawIFN(q, self, hbr)
 	--hbr.add({x, y, l, h})
 	local obg, ofg = self.context.getColors()
 	local ocf = self.context.getClickFunction()
-	self.context.setClickFunction(function(e, d)
-		debugger.log(e)
-		self.eventSystem.fireEvent(e, d)
-		if self.functions.onclick then self.functions.onclick(e, d) end
-	end)
+	self.context.setClickFunction(self.handlers.onclick)
 	self.context.setColors(self.color, self.textColor)
 	q(function()
 		self.context.setColors(obg, ofg)
