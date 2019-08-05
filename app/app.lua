@@ -71,11 +71,11 @@ BaseComponent.execute(function(gd)
 	viewport:ezDraw()
 	
 	while running do
+		coroutine.yield()
 		if doRefresh then 
 			viewport:ezDraw()
 			doRefresh = false
 		end
-		coroutine.yield()
 	end
 	baseContext.clear(COLORS.BLACK)
 end) 

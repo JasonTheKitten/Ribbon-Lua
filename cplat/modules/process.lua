@@ -382,23 +382,23 @@ else
 	end)
 	
 	--Mouse
-	process.registerEvent("mouse_click", function(e)
+	process.registerEvent("touch", function(e)
 		process.fireEvent("mouse_click", {
 			parent = process,
 			rawevent = e,
-			x = e[2]-1,
-			y = e[3]-1,
-			button = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
+			button = e[5],
 			display = nil
 		})
 	end)
-	process.registerEvent("mouse_drop", function(e)
+	process.registerEvent("drop", function(e)
 		process.fireEvent("mouse_up", {
 			parent = process,
 			rawevent = e,
-			x = e[2]-1,
-			y = e[3]-1,
-			button = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
+			button = e[5],
 			display = nil
 		})
 	end)
@@ -406,9 +406,9 @@ else
 		process.fireEvent("mouse_drag", {
 			parent = process,
 			rawevent = e,
-			x = e[2]-1,
-			y = e[3]-1,
-			button = e[4],
+			x = e[3]-1,
+			y = e[4]-1,
+			button = e[5],
 			display = nil
 		})
 	end)
@@ -452,5 +452,4 @@ else
 			id = e[2]
 		})
 	end)
-	
 end

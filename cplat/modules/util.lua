@@ -182,10 +182,19 @@ util.runIFN = function(...)
 	--Maybe change the name on a major version update someday?
 	local qt = {}
 	local function q(...)
-		table.insert(qt, 1, {...})
+		local args = {...}
+		if #args>0 then
+			table.insert(qt, 1, args)
+		else
+			return function(...)
+				table.insert(qt, {...})
+			end
+		end
 	end
 	q(...)
+	local i = 0
 	while #qt>0 do
+		--i = i+1 if i%1000==0 then print(i) end
 		local qt1 = qt[1]
 		table.remove(qt, 1)
 		if qt1 and qt1[1] then

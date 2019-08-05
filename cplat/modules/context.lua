@@ -240,15 +240,19 @@ context.getContext = function(parent, x, y, l, h)
 			end
 			q(pifn.drawData, trimmedData)
 		else
-			for y=0, #data do
-				if not data[y] then break end
-				for x=0, #data[y] do
-					if not data[y][x] then break end
-					if data[y][x][1] and data[y][x][2] then
-						q(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+			q(function()util.runIFN(function(q)
+				local q2 = q()
+				for y=0, #data do
+					if not data[y] then break end
+					for x=0, #data[y] do
+						if not data[y][x] then break end
+						if data[y][x][1] and data[y][x][2] then
+							--q2(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+							ifn.drawPixel(nil, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+						end
 					end
 				end
-			end
+			end) end)
 		end
 	end
 	
@@ -454,8 +458,8 @@ context.getNativeContext = function(display)
 			x = (internals.xinverted and ctx.width-x-1) or x
 			
 			if internals.isColor then
-				term.setBackground(color or ctx.CONFIG.defaultBackgroundColor)
-				term.setForeground(fg or ctx.CONFIG.defaultTextColor)
+				term.setBackground(color or internals.CONFIG.defaultBackgroundColor)
+				term.setForeground(fg or internals.CONFIG.defaultTextColor)
 			end
 			term.set(x+1, y+1, char or " ")
 		end
@@ -475,8 +479,8 @@ context.getNativeContext = function(display)
 			
 			
 			if internals.isColor then
-				term.setBackground(color or ctx.CONFIG.defaultBackgroundColor)
-				term.setForeground(fg or ctx.CONFIG.defaultTextColor)
+				term.setBackground(color or internals.CONFIG.defaultBackgroundColor)
+				term.setForeground(fg or internals.CONFIG.defaultTextColor)
 			end
 			gpu.fill(x+1, y+1, l, h, char or " ")
 		end
@@ -522,7 +526,7 @@ context.getNativeContext = function(display)
 			blitIf()
 		end
 		ifn.drawData = function(q, data)
-			local trimmedData = {x=data.x, y=data.y} --Should be squared
+			local trimmedData = {x=data.x, y=data.y}
 			for y=0, #data do
 				trimmedData[y] = {}
 				for x=0, #data[y] do
