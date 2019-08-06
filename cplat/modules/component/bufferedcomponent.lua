@@ -1,7 +1,7 @@
 local cplat = require()
 
 local class = cplat.require "class"
-local sctx = cplat.require "subcontext"
+local bctx = cplat.require "bufferedcontext"
 local ctxu = cplat.require "contextutils"
 local debugger = cplat.require "debugger"
 local process = cplat.require "process"
@@ -12,15 +12,16 @@ local SizePosGroup = cplat.require("class/sizeposgroup").SizePosGroup
 local Position = cplat.require("class/position").Position
 
 local Component = cplat.require("component/component").Component
+local BlockComponent = cplat.require("component/blockcomponent").BlockComponent
 
 local runIFN = util.runIFN
 
-local blockcomponent = ...
-local BlockComponent = {}
-blockcomponent.BlockComponent = BlockComponent
+local bufferedcomponent = ...
+local BufferedComponent = {}
+bufferedcomponent.BufferedComponent = BufferedComponent
 
-BlockComponent.cparents = {Component}
-function BlockComponent:__call(parent)
+BufferedComponent.cparents = {BlockComponent}
+function BufferedComponent:__call(parent)
 	class.checkType(parent, Component, 3, "Component")
 	
 	Component.__call(self, parent)
@@ -29,62 +30,18 @@ function BlockComponent:__call(parent)
 	self.autoSize = {}
 end
 
-function BlockComponent:setParent(parent)
+function BufferedComponent:setParent(parent)
 	Component.setParent(self, parent)
 	if parent and parent.context then
-		self.context = sctx.getContext(parent.context, 0, 0, 0, 0)
+		self.context = bctx.getContext(parent.context, 0, 0, 0, 0, parent.eventSystem)
 	end
 end
 
-function BlockComponent:getSize()
-	return self.size
-end
-function BlockComponent:setSize(size)
-	class.checkType(size, Size, 3, "Size")
-	self.size = size
-end
-
-function BlockComponent:setPreferredSize(size)
-	if size then class.checkType(size, Size, 3, "Size") end
-	self.preferredSize = size
-end
-function BlockComponent:getPreferredSize()
-	return self.preferredSize
-end
-
-function BlockComponent:setMinSize(size)
-	if size then class.checkType(size, Size, 3, "Size") end
-	self.minSize = size
-end
-function BlockComponent:getMinSize()
-	return self.minSize
-end
-
-function BlockComponent:setMaxSize(size)
-	if size then class.checkType(size, Size, 3, "Size") end
-	self.maxSize = size
-end
-function BlockComponent:getMaxSize()
-	return self.maxSize
-end
-
-function BlockComponent:forceSize(size)
-	class.checkType(size, Size, 3, "Size")
-	self:setMinSize(size)
-	self:setMaxSize(size)
-	self:setPreferredSize(size)
-	self:setSize(size)
-end
-
-function BlockComponent:setAutoSize(w, ow, h, oh)
-	self.autoSize = {w, ow, h, oh}
-end
-
 --IFN functions
-function BlockComponent.calcSizeIFN(q, self, size)
+function BufferedComponent.calcSizeIFN(q, self, size)
 	if not self.parent then return end
 
-	self.context = self.context or sctx.getContext(self.parent.context, 0, 0, 0, 0)
+	self.context = self.context or bctx.getContext(self.parent.context, 0, 0, 0, 0, self.parent.eventSystem)
 	self.context.parent = self.parent.context
 	
 	local osize = size
@@ -129,11 +86,11 @@ function BlockComponent.calcSizeIFN(q, self, size)
 		if not v.sizeAndLocation then q(v.calcSizeIFN, v, msize) end
 	end
 end
-function BlockComponent.drawIFN(q, self, hbr)
+function BufferedComponent.drawIFN(q, self, hbr)
 	if not self.parent then return end
 	
 	local obg, ofg = self.context.getColors()
-	local dbg, dfg = self.parent.context.getColors()
+	local dbg, dfg = self.context.parent.getColors()
 	local ocf = self.context.getClickFunction()
 	self.context.setClickFunction(self.handlers.onclick)
 	self.context.setColors(self.color or dbg, self.textColor or dfg)
@@ -142,9 +99,19 @@ function BlockComponent.drawIFN(q, self, hbr)
 		self.context.endDraw()
 		self.context.setColors(obg, ofg)
 		self.context.setClickFunction(ocf)
+		
+		local ocfp
+		if self.context.parent.setClickFunction then
+			ocfp = self.context.parent.getClickFunction()
+			self.context.parent.setClickFunction(self.context.triggers.onclick)
+		end
+		self.context.drawBuffer()
+		if ocfp then
+			self.context.parent.setClickFunction(ocfp)
+		end
 	end)
 	
-	self.context.clear(self.color)
+	self.context.clear()
 	
 	for k, v in util.ripairs(self.children) do
 		q(v.drawIFN, v, size)

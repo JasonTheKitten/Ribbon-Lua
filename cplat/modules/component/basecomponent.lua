@@ -9,7 +9,7 @@ local process = cplat.require "process"
 local Size = cplat.require("class/size").Size
 local SizePosGroup = cplat.require("class/sizeposgroup").SizePosGroup
 
-local BlockComponent = cplat.require("component/blockcomponent").BlockComponent
+local BufferedComponent = cplat.require("component/bufferedcomponent").BufferedComponent
 local Component = cplat.require("component/component").Component
 
 local basec = ...
@@ -18,30 +18,33 @@ basec.BaseComponent = BaseComponent
 
 BaseComponent.cparents = {Component}
 function BaseComponent:__call(ctx, es)
-	self.context = ctx--bctx.getContext(ctx, 0, 0, nil, nil, process)
+	self.context = ctx
 	self.children = {}
 	self.handlers = {}
 	self.functions = {}
 	self.eventSystem = process
+	self.defaultComponent = class.new(BufferedComponent, self)
+	self.defaultComponent:setAutoSize(1, 0, 1, 0)
+	self:update()
 end
 
+function BaseComponent:setParent() end
+
 function BaseComponent:getDefaultComponent()
-	local dc = class.new(BlockComponent, self)
-	local msize = class.new(Size, self.context.width, self.context.height) --TODO: Not be lazy
-	dc:setMinSize(msize)
-	dc:setMaxSize(msize)
-	dc:setPreferredSize(msize)
-	dc:setSize(msize)
-	
-	return dc
+	return self.defaultComponent
 end
-function BaseComponent.drawIFN(q, self, hbr)
+function BaseComponent:update()
+	local oldWidth, oldHeight = self.context.width, self.context.height
+	self.context.endDraw()
 	self.context.startDraw()
-	q(function()
-		self.context.endDraw()
-		self.context.drawBuffer()
-	end)
-	Component.drawIFN(q, self, hbr)
+	local doRedraw = self.context.width~=oldWidth or self.context.height~=oldHeight
+	return doRedraw
+end
+
+function BaseComponent:ezDraw()
+	self:update()
+	self.defaultComponent:calcSize(class.new(SizePosGroup, class.new(Size, self.context.width, self.context.height)))
+	self.defaultComponent:draw()
 end
 
 function BaseComponent.execute(func)

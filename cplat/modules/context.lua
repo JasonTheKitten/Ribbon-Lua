@@ -17,6 +17,10 @@ if apptype ~= "GRAPHICAL" and apptype ~= "HYBRID" then
 end
 local defaultContext = appinfo.CONTEXT
 
+local hex = {
+	[0] = "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"
+}
+
 --Helper functions
 local function checkCanStartDraw(internals)
 	if internals.drawing then error("Cannot start drawing: already drawing", 3) end
@@ -94,8 +98,10 @@ context.getContext = function(parent, x, y, l, h)
 	ifn.drawPixel = function(q, x, y, color, char, fg)
 		checkInitialized(internals)
 		x, y = cXY(ctx, x, y)
-		if (x>0 and (not ctx.width or x<ctx.width)) and (y>0 and (not ctx.height or y<ctx.height)) then
-			q(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
+		if (x>=0 and (not ctx.width or x<ctx.width)) and (y>=0 and (not ctx.height or y<ctx.height)) then
+			color = color or internals.CONFIG.defaultBackgroundColor
+			fg = fg or internals.CONFIG.defaultTextColor
+			q()(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
 		end
 	end
 	
@@ -142,9 +148,10 @@ context.getContext = function(parent, x, y, l, h)
 			x, y = cXY(ctx, x, y, l)
 			q(pifn.drawFilledRect, ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
 		else
+			local q2 = q()
 			for ox=0, l-1 do
 				for oy=0, h-1 do
-					q(ifn.drawPixel, x+ox, y+oy, color, char or " ", fg)
+					q2(ifn.drawPixel, x+ox, y+oy, color, char or " ", fg)
 				end
 			end
 		end
@@ -247,8 +254,8 @@ context.getContext = function(parent, x, y, l, h)
 					for x=0, #data[y] do
 						if not data[y][x] then break end
 						if data[y][x][1] and data[y][x][2] then
-							--q2(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
-							ifn.drawPixel(nil, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+							q2(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+							--ifn.drawPixel(nil, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
 						end
 					end
 				end
@@ -365,8 +372,51 @@ context.getNativeContext = function(display)
 			end
 		end})
 		
+		if natives.term.blit then
+			ifn.blit = function(q, x, y, str, bstr, fstr)
+				checkInitialized(internals)
+				if term.getSimulated() then return end
+				
+				x, y = x-ctx.scroll.x, y-ctx.scroll.y
+				if internals.xtinverted then
+					str = ctxu.reverseTextX(str)
+					bstr = ctxu.reverseTextX(bstr)
+					fstr = ctxu.reverseTextX(fstr)
+				end
+				if internals.xinverted then
+					str = ctxu.reverseTextX(str)
+					bstr = ctxu.reverseTextX(bstr)
+					fstr = ctxu.reverseTextX(fstr)
+					x=ctx.width-x-#str
+				end
+				term.setCursorPos(x+1, y+1)
+				term.blit(str, fstr:gsub(" ", "0"), bstr:gsub(" ", "f"))
+			end
+			ifn.drawData = function(q, data)
+				checkInitialized(internals)
+				if term.getSimulated() then return end
+				
+				local buffer = {}
+				
+				for y=0, #data do
+					local by = {"", "", ""}
+					for x=0, #data[y] do
+						by[1] = by[1]..data[y][x][1]
+						by[2] = by[2]..(hex[data[y][x][2]] or "0")
+						by[3] = by[3]..(hex[data[y][x][3]] or "f")
+					end
+					buffer[y] = by
+				end
+				
+				for k, v in pairs(buffer) do
+					q(ifn.blit, data.x, data.y+k, buffer[k][1], buffer[k][2], buffer[k][3])
+				end
+			end
+		end
+		
 		ifn.drawPixel = function(q, x, y, color, char, fg)
 			checkInitialized(internals)
+			if term.getSimulated() then return end
 			
 			char = (char and tostring(char)) or " "
 			color = color or ctx.currentBackgroundColor
@@ -383,6 +433,19 @@ context.getNativeContext = function(display)
 			
 			term.setCursorPos(x+1, y+1)
 			term.write(char)
+		end
+		ctx.clear = function(color, char)
+			checkInitialized(internals)
+			if term.getSimulated() then return end
+			
+			char = char and tostring(char) or " "
+			if char == " " then
+				term.setBackgroundColor(color or internals.CONFIG.defaultBackgroundColor)
+				term.clear()
+			else
+				runIFN(ifn.drawFilledRect, 0, 0, ctx.width, ctx.height, color, char)
+			end
+			return 0, 0
 		end
 		ctx.startDraw = function()
 			checkCanStartDraw(internals)
@@ -526,6 +589,9 @@ context.getNativeContext = function(display)
 			blitIf()
 		end
 		ifn.drawData = function(q, data)
+			checkInitialized(internals)
+			if term.getSimulated() then return end
+			
 			local trimmedData = {x=data.x, y=data.y}
 			for y=0, #data do
 				trimmedData[y] = {}

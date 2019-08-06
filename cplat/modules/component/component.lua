@@ -21,12 +21,12 @@ Component.cparents = {class.Class}
 function Component:__call(parent)
 	class.checkType(parent, Component, 3, "Component")
 	
-	self.parent = parent
+	self:setParent(parent)
+	
 	self.children = {}
 	self.functions = {}
 	self.handlers = {}
 	self.eventSystem = process.createEventSystem()
-	self.context = parent.context
 	
 	self.handlers.onclick = function(e, d)
 		self.eventSystem.fireEvent(e, d)
@@ -35,13 +35,13 @@ function Component:__call(parent)
 			self.parent.handlers.onclick(e, d)
 		end
 	end
-	
-	table.insert(parent.children, 1, self)
 end
 
 function Component:removeChild(child)
 	for k, v in pairs(self.children) do
 		if rawequal(child, v) then
+			v.parent = nil
+			v.context = nil
 			table.remove(self.children, k)
 			break
 		end
@@ -56,7 +56,8 @@ function Component:setParent(parent)
 	self:delete()
 	if parent then
 		self.parent = parent
-		table.insert(parent.children, 1, self)
+		--self.context = parent.context
+		table.insert(parent.children, self)
 	end
 end
 
@@ -97,6 +98,9 @@ function Component:calcSize(size)
 	runIFN(self.calcSizeIFN, self, size)
 end
 function Component.calcSizeIFN(q, self, size)
+	if not self.parent then return end
+
+	self.context = self.parent.context
 	if self.sizeAndLocation then
 		local msize = self.sizeAndLocation[1]
 		local x, y = ctxu.calcPos(self.parent.context, table.unpack(self.sizeAndLocation, 2))
@@ -104,10 +108,10 @@ function Component.calcSizeIFN(q, self, size)
 	else
 		size = self.sizePosGroup or size
 	end
-	for k, v in ipairs(self.children) do
+	for k, v in util.ripairs(self.children) do
 		if v.sizeAndLocation then q(v.calcSizeIFN, v, msize) end
 	end
-	for k, v in ipairs(self.children) do
+	for k, v in util.ripairs(self.children) do
 		if not v.sizeAndLocation then q(v.calcSizeIFN, v, size) end
 	end
 end
@@ -115,8 +119,9 @@ end
 function Component:draw(hbr)
 	runIFN(self.drawIFN, self, hbr)
 end
-function Component.drawIFN(q, self, hbr)
-	--hbr.add({x, y, l, h})
+function Component.drawIFN(q, self)
+	if not self.parent then return end
+
 	local obg, ofg = self.context.getColors()
 	local ocf = self.context.getClickFunction()
 	self.context.setClickFunction(self.handlers.onclick)
@@ -125,12 +130,7 @@ function Component.drawIFN(q, self, hbr)
 		self.context.setColors(obg, ofg)
 		self.context.setClickFunction(ocf)
 	end)
-	for k, v in ipairs(self.children) do
+	for k, v in util.ripairs(self.children) do
 		if not v.sizePosGroup then q(v.drawIFN, v) end
 	end
-end
-
-function Component:ezDraw()
-	self:calcSize(class.new(SizePosGroup))
-	self:draw(nil)
 end

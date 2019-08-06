@@ -22,6 +22,15 @@ end
 util.ipairs = function(tbl)
 	return ipairs(util.copy(tbl))
 end
+util.ripairs = function(tbl)
+	i=#tbl+1
+	return function()
+		if i>1 then
+			i = i - 1
+			return i, tbl[i]
+		end
+	end
+end
 
 util.unpackNoNil = function(tbl, pos)
 	local unpacked, pos, high = {}, pos-1, 0
@@ -181,10 +190,11 @@ util.runIFN = function(...)
 	--This is why we need better function names (:
 	--Maybe change the name on a major version update someday?
 	local qt = {}
+	local i = 0
 	local function q(...)
 		local args = {...}
 		if #args>0 then
-			table.insert(qt, 1, args)
+			table.insert(qt, i+1, args)
 		else
 			return function(...)
 				table.insert(qt, {...})
@@ -192,13 +202,12 @@ util.runIFN = function(...)
 		end
 	end
 	q(...)
-	local i = 0
-	while #qt>0 do
-		--i = i+1 if i%1000==0 then print(i) end
-		local qt1 = qt[1]
-		table.remove(qt, 1)
-		if qt1 and qt1[1] then
-			qt1[1](q, util.unpackNoNil(qt1, 2))
+	while #qt>i do
+		i = i+1 
+		--if i%1000==0 then print(i) end
+		local qtI = qt[i]
+		if qtI and qtI[1] then
+			qtI[1](q, util.unpackNoNil(qtI, 2))
 		end
 	end
 end

@@ -5,11 +5,11 @@ local cplat = require()
 
 local BlockComponent = cplat.require("component/blockcomponent").BlockComponent
 
-local span = ...
-local Span = {}
-span.Span = Span
+local hspan = ...
+local HSpan = {}
+hspan.HSpan = HSpan
 
-Span.cparents = {BlockComponent}
-function Span:__call(parent)
+HSpan.cparents = {BlockComponent}
+function HSpan:__call(parent)
 	BlockComponent.__call(self, parent)
 end

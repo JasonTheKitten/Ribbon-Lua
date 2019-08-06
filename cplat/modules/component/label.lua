@@ -50,6 +50,7 @@ local function internalSizeProc(self, size, f)
 	end
 end
 function Label.calcSizeIFN(q, self, size)
+	self.context = self.parent.context
 	self.size = size:cloneAll()
 	
 	internalSizeProc(self, size)

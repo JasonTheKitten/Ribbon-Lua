@@ -132,15 +132,10 @@ local dofile = dofile --TODO
 local mos = {}
 for k, v in pairs(os) do mos[k] = v end
 local function sleep(t)
-	local proc = cplat.require("process")
-	local ev = cplat.require "environment"
-	--local ie = proc.getInterruptsEnabled()
-	--proc.setInterruptsEnabled(false)
 	local time = mos.clock()+t
 	while mos.clock()<time do
 		coroutine.yield()
 	end
-	--proc.setInterruptsEnabled(ie)
 end
 
 --Execution environment
@@ -179,9 +174,9 @@ env.io = io
 env.math = math
 env.os = mos
 env.string = string
-env.table = table
-
-env.table.unpack = table.unpack or unpack --TODO: Isolate table API
+env.table = {}
+for k, v in pairs(table) do env.table[k] = v end
+env.table.unpack = table.unpack or unpack
 
 local package = {
     loaded = {},

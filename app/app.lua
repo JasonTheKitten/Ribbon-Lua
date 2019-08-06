@@ -15,7 +15,7 @@ local BlockComponent = cplat.require("component/blockcomponent").BlockComponent
 local Break = cplat.require("component/break").Break
 local Button = cplat.require("component/button").Button
 local Label = cplat.require("component/label").Label
-local Span = cplat.require("component/span").Span
+local HSpan = cplat.require("component/hspan").HSpan
 
 local COLORS = statics.get("colors")
 
@@ -24,27 +24,30 @@ local running, doRefresh, menuOpen, doMenuOpen = true, true, false, false
 BaseComponent.execute(function(gd)
 	local baseContext = gd(0)
 	
-	local viewport = class.new(BaseComponent, baseContext, process):getDefaultComponent()
+	local basecomponent = class.new(BaseComponent, baseContext, process)
+	local viewport = basecomponent:getDefaultComponent()
 	local contentpane = class.new(BlockComponent, viewport)
-	local titlebar = class.new(Span, contentpane)
+	local titlebar = class.new(HSpan, contentpane)
 	local hamburgerIcon = class.new(Button, titlebar, "=")
 	class.new(Label, titlebar, " ")
 	local title = class.new(Label, titlebar, "CPlat File Explorer")
 	local xButton = class.new(Button, titlebar, "X")
 	
 	--Hamburger Menu
-	local menuTitle = " Hamburger Menu "
+	local menuTitle = " Quick Start "
 		
 	local sidebar = class.new(BlockComponent, viewport)
 	sidebar:delete()
-	sidebar:setSizeAndLocation(class.new(Size, #menuTitle, viewport.size.height - 1), 0, 0, 1, 0)
-	sidebar:setColor(COLORS.LIGHTGRAY)
+	sidebar:setSizeAndLocation(class.new(Size, #menuTitle, 1), 0, 0, 1, 0)
+	sidebar:setAutoSize(nil, nil, 1, -1)
+	sidebar:setColor(COLORS.GREEN)
 	
-	class.new(Label, sidebar, menuTitle)
+	class.new(Break, sidebar)
+	class.new(Label, sidebar, menuTitle):setTextColor(COLORS.WHITE)
 	--End
 	
-	contentpane:setSize(viewport:getSize())
-	
+	contentpane:setAutoSize(1, 0, 1, 0)
+	contentpane:setColor(COLORS.WHITE)
 	contentpane:onClick(function()
 		menuOpen = doMenuOpen
 		if doMenuOpen then 
@@ -55,7 +58,7 @@ BaseComponent.execute(function(gd)
 		doRefresh, doMenuOpen = true, false
 	end)
 	
-	titlebar:setSize(class.new(Size, viewport.size.width, 1))
+	titlebar:setAutoSize(1)
 	titlebar:setColor(COLORS.LIME)
 	titlebar:setTextColor(COLORS.WHITE)
 	
@@ -68,12 +71,13 @@ BaseComponent.execute(function(gd)
 	xButton:setSizeAndLocation(class.new(Size, 1, 1), -1, 1, 0, 0)
 	xButton:onClick(function() running = false end)
 	
-	viewport:ezDraw()
+	basecomponent:ezDraw()
 	
 	while running do
 		coroutine.yield()
+		doRefresh = doRefresh or basecomponent:update()
 		if doRefresh then 
-			viewport:ezDraw()
+			basecomponent:ezDraw()
 			doRefresh = false
 		end
 	end
