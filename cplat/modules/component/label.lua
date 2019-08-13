@@ -26,6 +26,7 @@ end
 --IFN functions
 local function internalSizeProc(self, size, f)
 	local text, lastSpaceBroke = self.text, false
+	size:fixCursor()
 	for i=1, #text do
 		local char = text:sub(i, i)
 		if char == "\n" then
@@ -49,7 +50,10 @@ local function internalSizeProc(self, size, f)
 		end
 	end
 end
+
 function Label.calcSizeIFN(q, self, size)
+	size:fixCursor()
+	
 	self.context = self.parent.context
 	self.size = size:cloneAll()
 	
@@ -59,11 +63,11 @@ function Label.calcSizeIFN(q, self, size)
 		q(v.calcSizeIFN, v, size)
 	end
 end
-function Label.drawIFN(q, self, hbr)
-	Component.drawIFN(q, self, hbr)
+function Label.drawIFN(q, self)
+	Component.drawIFN(q, self)
 	
 	local size = self.size:cloneAll()
 	internalSizeProc(self, size, function(char)
-		self.context.drawPixel(size.position.x, size.position.y, nil, (char~="\t" and char) or " ")
+		self.context.drawPixel(size.position.x, size.position.y, self.color, (char~="\t" and char) or " ", self.textColor)
 	end)
 end

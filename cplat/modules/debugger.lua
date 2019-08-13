@@ -2,6 +2,8 @@ local cplat = require()
 
 local debugger = ...
 
+local inDebug = false
+
 local debugFile
 local function put(data)
 	if debugFile then
@@ -13,19 +15,19 @@ local function put(data)
 	end
 end
 
-debugger.error = function(data)
+debugger.error = function(data, inRelease)
 	put("[ERROR]: "..tostring(data))
 end
 
-debugger.warn = function(data)
+debugger.warn = function(data, inRelease)
 	put("[WARN]: "..tostring(data))
 end
 
-debugger.info = function(data)
+debugger.info = function(data, inRelease)
 	put("[INFO]: "..tostring(data))
 end
 
-debugger.log = function(data)
+debugger.log = function(data, inRelease)
 	put("[LOG]: "..tostring(data))
 end
 
@@ -34,4 +36,8 @@ debugger.setDebugFile = function(path)
 end
 debugger.getDebugFile = function()
     return debugFile
+end
+
+debugger.setDebug = function(isInDebug)
+	inDebug = isInDebug
 end

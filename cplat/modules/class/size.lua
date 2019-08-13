@@ -10,6 +10,12 @@ Size.cparents = {class.Class}
 function Size:__call(w, h)
 	self.width, self.height = math.abs(w), math.abs(h)
 end
+
+function Size:subtractLH(l, h)
+	self.width, self.height = self.width-l, self.height-h
+	return self
+end
+
 function Size:getWidth()
 	return self.width
 end

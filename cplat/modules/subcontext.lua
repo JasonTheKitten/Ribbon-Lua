@@ -25,12 +25,13 @@ sctx.getContext = function(p, x, y, l, h)
 	local internals = ctx.INTERNALS
 	local ifn = internals.IFN
 	local pifn = ctx.parent.INTERNALS.IFN
-	local i = 0
 	ifn.drawPixel = function(q, x, y, color, char, fg)
 		checkInitialized(internals)
 		x, y = cXY(ctx, x, y)
 		if (x>=0 and (not ctx.width or x<ctx.width)) and (y>=0 and (not ctx.height or y<ctx.height)) then
-			q()(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
+			color = color or internals.CONFIG.defaultBackgroundColor
+			fg = fg or internals.CONFIG.defaultTextColor
+			q(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color or 0, char, fg or 15)
 		end
 	end
 	

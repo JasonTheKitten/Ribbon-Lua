@@ -93,11 +93,11 @@ function BufferedComponent.drawIFN(q, self, hbr)
 	local dbg, dfg = self.context.parent.getColors()
 	local ocf = self.context.getClickFunction()
 	self.context.setClickFunction(self.handlers.onclick)
-	self.context.setColors(self.color or dbg, self.textColor or dfg)
+	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
 	q(function()
 		self.context.endDraw()
-		self.context.setColors(obg, ofg)
+		self.context.setColorsRaw(obg, ofg)
 		self.context.setClickFunction(ocf)
 		
 		local ocfp

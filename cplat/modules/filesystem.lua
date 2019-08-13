@@ -119,3 +119,9 @@ filesystem.move = function(f, d, re)
 	if not (ok or re) then error(err, 2) end
 	return ok, err
 end
+
+filesystem.getName = function(f)
+	local name = ""
+	for part in f:gmatch("([^/]+)") do name=part end
+	return name
+end

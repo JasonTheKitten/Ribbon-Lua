@@ -2,6 +2,7 @@ local cplat = require()
 
 local environment = cplat.require "environment"
 local ctxu = cplat.require "contextutils"
+local bctx = cplat.require "bufferedcontext"
 local displayapi = cplat.require "display"
 local util = cplat.require "util"
 
@@ -55,6 +56,8 @@ context.getContext = function(parent, x, y, l, h)
 		scroll = {x=0, y=0},
 		width = l or (parent and parent.width),
 		height = h or (parent and parent.height),
+		enableOCFlickerOptimizations = true,
+		enableCCFlickerOptimizations = true,
 	}
 	local internals = {
 		isNative = false,
@@ -64,8 +67,8 @@ context.getContext = function(parent, x, y, l, h)
 		useParentheight = not h,
 		xinverted = false,
 		CONFIG = {
-			defaultBackgroundColor = 0,
-			defaultTextColor = 15,
+			defaultBackgroundColor = 7,
+			defaultTextColor = 5,
 		}
 	}
 	ctx.INTERNALS = internals
@@ -101,7 +104,7 @@ context.getContext = function(parent, x, y, l, h)
 		if (x>=0 and (not ctx.width or x<ctx.width)) and (y>=0 and (not ctx.height or y<ctx.height)) then
 			color = color or internals.CONFIG.defaultBackgroundColor
 			fg = fg or internals.CONFIG.defaultTextColor
-			q()(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
+			q(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
 		end
 	end
 	
@@ -148,10 +151,9 @@ context.getContext = function(parent, x, y, l, h)
 			x, y = cXY(ctx, x, y, l)
 			q(pifn.drawFilledRect, ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
 		else
-			local q2 = q()
 			for ox=0, l-1 do
 				for oy=0, h-1 do
-					q2(ifn.drawPixel, x+ox, y+oy, color, char or " ", fg)
+					q(ifn.drawPixel, x+ox, y+oy, color, char or " ", fg)
 				end
 			end
 		end
@@ -225,6 +227,36 @@ context.getContext = function(parent, x, y, l, h)
 		end
 	end
 	
+	ctx.applyBuffer = function(b, x, y, l, h)
+		checkInitialized(internals)
+		util.runIFN(ifn.applyBuffer, b, x, y, l, h)
+	end
+	ifn.applyBuffer = function(q, b, x, y, l, h)
+		checkInitialized(internals)
+		local function getPixelInfo(x, y, dtype) 
+			if not x or not y then return end
+			for k, v in util.ripairs(b) do
+				if v[dtype] and
+					(not v.x or (x>=v.x and (not v.width or x<(v.x+v.width)))) and 
+					(not v.y or (y>=v.y and (not v.height or y<(v.y+v.height)))) then
+					return v[dtype]
+				end
+			end
+		end
+		for k, v in util.ripairs(b) do
+			local mx, my = (v.x or 0)+x, (v.y or 0)+y
+			local bg, char, fg = 
+				v.background or getPixelInfo(v.x, v.y, "background"), 
+				v.char or getPixelInfo(v.x, v.y, "char"), 
+				v.foreground or getPixelInfo(v.x, v.y, "foreground")
+			if v.width==1 and v.height==1 then
+				q(ifn.drawPixel, mx, my, bg, char, fg)
+			else
+				q(ifn.drawFilledRect, (v.x or 0)+x, (v.y or 0)+y, v.width or l, v.height or h, bg, char, fg)
+			end
+		end
+	end
+	
 	ctx.drawData = function(data)
 		runIFN(ifn.drawData, data)
 		if not data[0] then return end
@@ -247,25 +279,25 @@ context.getContext = function(parent, x, y, l, h)
 			end
 			q(pifn.drawData, trimmedData)
 		else
-			q(function()util.runIFN(function(q)
-				local q2 = q()
-				for y=0, #data do
-					if not data[y] then break end
-					for x=0, #data[y] do
-						if not data[y][x] then break end
-						if data[y][x][1] and data[y][x][2] then
-							q2(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
-							--ifn.drawPixel(nil, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
-						end
+			for y=0, #data do
+				if not data[y] then break end
+				for x=0, #data[y] do
+					if not data[y][x] then break end
+					if data[y][x][1] and data[y][x][2] then
+						q(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
 					end
 				end
-			end) end)
+			end
 		end
 	end
 	
 	ctx.setColors = function(color, fg)
 		internals.CONFIG.defaultBackgroundColor = color or internals.CONFIG.defaultBackgroundColor
 		internals.CONFIG.defaultTextColor = fg or internals.CONFIG.defaultTextColor
+	end
+	ctx.setColorsRaw = function(color, fg)
+		internals.CONFIG.defaultBackgroundColor = color
+		internals.CONFIG.defaultTextColor = fg
 	end
 	ctx.getColors = function(color, fg)
 		return internals.CONFIG.defaultBackgroundColor, internals.CONFIG.defaultTextColor
@@ -365,7 +397,7 @@ context.getNativeContext = function(display)
 		setmetatable(term, {__index=function(t, k)
 			return rawget(t, k) or function(...)
 				local args = {...}
-				local res = {pcall(function()
+				local res, e = {pcall(function()
 					return resolveDisplay()[k](table.unpack(args))
 				end)}
 				if res[1] then return table.unpack(res, 2) end
@@ -401,7 +433,7 @@ context.getNativeContext = function(display)
 				for y=0, #data do
 					local by = {"", "", ""}
 					for x=0, #data[y] do
-						by[1] = by[1]..data[y][x][1]
+						by[1] = by[1]..(data[y][x][1] or " ")
 						by[2] = by[2]..(hex[data[y][x][2]] or "0")
 						by[3] = by[3]..(hex[data[y][x][3]] or "f")
 					end
@@ -411,6 +443,16 @@ context.getNativeContext = function(display)
 				for k, v in pairs(buffer) do
 					q(ifn.blit, data.x, data.y+k, buffer[k][1], buffer[k][2], buffer[k][3])
 				end
+			end
+		end
+		
+		local oldIFNAB = ifn.applyBuffer
+		ifn.applyBuffer = function(q, b, x, y, l, h)
+			checkInitialized(internals)
+			if ctx.enableCCFlickerOptimizations then
+				q(ifn.drawData, bctx.getData(b, x, y, l, h))
+			else
+				q(oldIFNAB, b, x, y, l, h)
 			end
 		end
 		
@@ -427,8 +469,8 @@ context.getNativeContext = function(display)
 			x = (ctx.INTERNALS.xinverted and ctx.width-x-1) or x
 			
 			if ctx.INTERNALS.isColor then
-				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor))
-				term.setTextColor(2^(fg or internals.CONFIG.defaultTextColor))
+				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor or 15))
+				term.setTextColor(2^(fg or internals.CONFIG.defaultTextColor or 0))
 			end
 			
 			term.setCursorPos(x+1, y+1)
@@ -440,7 +482,7 @@ context.getNativeContext = function(display)
 			
 			char = char and tostring(char) or " "
 			if char == " " then
-				term.setBackgroundColor(color or internals.CONFIG.defaultBackgroundColor)
+				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor or 0))
 				term.clear()
 			else
 				runIFN(ifn.drawFilledRect, 0, 0, ctx.width, ctx.height, color, char)
@@ -521,8 +563,8 @@ context.getNativeContext = function(display)
 			x = (internals.xinverted and ctx.width-x-1) or x
 			
 			if internals.isColor then
-				term.setBackground(color or internals.CONFIG.defaultBackgroundColor)
-				term.setForeground(fg or internals.CONFIG.defaultTextColor)
+				term.setBackground(color or internals.CONFIG.defaultBackgroundColor or 15)
+				term.setForeground(fg or internals.CONFIG.defaultTextColor or 0)
 			end
 			term.set(x+1, y+1, char or " ")
 		end
@@ -588,10 +630,20 @@ context.getNativeContext = function(display)
 			end
 			blitIf()
 		end
+		
+		local oldIFNAB = ifn.applyBuffer
+		ifn.applyBuffer = function(q, b, x, y, l, h)
+			checkInitialized(internals)
+			if ctx.enableOCFlickerOptimizations then
+				q(ifn.drawData, bctx.getData(b, x, y, l, h))
+			else
+				q(oldIFNAB, b, x, y, l, h)
+			end
+		end
 		ifn.drawData = function(q, data)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
-			
+
 			local trimmedData = {x=data.x, y=data.y}
 			for y=0, #data do
 				trimmedData[y] = {}
@@ -669,6 +721,7 @@ context.getNativeContext = function(display)
 				end
 			end
 		end
+		
 		ctx.startDraw = function()
 			checkCanStartDraw(internals)
 			internals.drawing = true

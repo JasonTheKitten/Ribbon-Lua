@@ -25,6 +25,8 @@ function BaseComponent:__call(ctx, es)
 	self.eventSystem = process
 	self.defaultComponent = class.new(BufferedComponent, self)
 	self.defaultComponent:setAutoSize(1, 0, 1, 0)
+	self.defaultComponent:setColor(0)
+	self.defaultComponent:setTextColor(15)
 	self:update()
 end
 

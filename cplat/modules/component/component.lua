@@ -47,6 +47,11 @@ function Component:removeChild(child)
 		end
 	end
 end
+function Component:removeChildren()
+	while self.children[1] do
+		self:removeChild(self.children[1]) 
+	end
+end
 function Component:delete()
 	if self.parent then
 		self.parent:removeChild(self)
@@ -59,6 +64,15 @@ function Component:setParent(parent)
 		--self.context = parent.context
 		table.insert(parent.children, self)
 	end
+end
+
+function Component:setDebugID(id)
+	self.debugID = id or ("Component "..tostring(self):gsub(".+: ", ""))
+end
+function Component:debug(...)
+	local str = self.debugID..": "
+	for k, v in pairs({...}) do str=str..tostring(v) end
+	debugger.log(str)
 end
 
 function Component:setTextColor(c)
@@ -108,6 +122,7 @@ function Component.calcSizeIFN(q, self, size)
 	else
 		size = self.sizePosGroup or size
 	end
+	
 	for k, v in util.ripairs(self.children) do
 		if v.sizeAndLocation then q(v.calcSizeIFN, v, msize) end
 	end

@@ -1,7 +1,5 @@
 --TODO: Close all contexts and handles when an error occurs.
 
-print("Loading, thank you for your patience...")
-
 --App Info
 local APP = {
 	TITLE = "APPLICATION",
@@ -47,8 +45,18 @@ local results = {pcall(function(...)
 	local process = process or prequire("process")
 	local filesystem = filesystem or prequire("filesystem")
 	if not loadfile or not ((shell and fs) or (shell and process and filesystem)) then
-		error("Unsupported operating environment")
+		if filesystem and shell then
+			print("Plan9k is not supported. Please use a better operating system.")
+			print("Here are some ideas:\n\tOpenOS\n\tCraftOS")
+			return
+		else
+			error("Unsupported operating environment", 1)
+		end
 	end
+	local isOC = not fs
+	
+	--Load message
+	print("Loading, thank you for your patience...")
 	
 	--Set shell name
 	if multishell then
@@ -63,10 +71,10 @@ local results = {pcall(function(...)
 
     --Resolve paths
     if not paths["PATH"] then
-		paths["PATH"] = "./"
-		if process then
+		paths["PATH"] = "."
+		if isOC and process then
     		paths["PATH"] = filesystem.concat(shell.resolve(process.info(1).path), "..")
-    	elseif shell then
+    	elseif fs then
     		paths["PATH"] = fs.getDir(shell.getRunningProgram())
     	end
     end
@@ -102,7 +110,7 @@ end, ...)}
 --Error checking
 if not results[1] then
     baseError = (type(baseError) == "string" and baseError) or 
-        "A fatal error has occured!"
+        "A fatal error has occurred!"
 	local err = results[2] or ""
 	local ok = false
 	if type(cplat) == "table" then

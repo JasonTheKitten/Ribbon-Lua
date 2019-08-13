@@ -20,21 +20,11 @@ Break.cparents = {Component}
 function Break:__call(parent)
 	class.checkType(parent, Component, 3, "Component")
 	
-	self.children = {}
-	self.eventSystem = process.createEventSystem()
-	self.context = parent.context
-	
-	table.insert(parent.children, 1, self)
-	
-	parent.eventSystem.addEventListener(nil, function(d, e)
-		self.eventSystem.fire(e, d) --TODO: Filter
-	end)
+	Component.__call(self, parent)
 end
 
 --IFN functions
 function Break.calcSizeIFN(q, self, size)
 	size.position:incLine()
-	for k, v in pairs(self.children) do
-		q(v.calcSizeIFN, v, size)
-	end
+	Component.calcSizeIFN(q, self, size)
 end

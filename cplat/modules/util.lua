@@ -23,7 +23,7 @@ util.ipairs = function(tbl)
 	return ipairs(util.copy(tbl))
 end
 util.ripairs = function(tbl)
-	i=#tbl+1
+	local i=#tbl+1
 	return function()
 		if i>1 then
 			i = i - 1
@@ -192,20 +192,12 @@ util.runIFN = function(...)
 	local qt = {}
 	local i = 0
 	local function q(...)
-		local args = {...}
-		if #args>0 then
-			table.insert(qt, i+1, args)
-		else
-			return function(...)
-				table.insert(qt, {...})
-			end
-		end
+		qt[#qt+1] = {...}
 	end
 	q(...)
-	while #qt>i do
-		i = i+1 
-		--if i%1000==0 then print(i) end
-		local qtI = qt[i]
+	while #qt>0 do
+		local qtI = qt[#qt]
+		qt[#qt] = nil
 		if qtI and qtI[1] then
 			qtI[1](q, util.unpackNoNil(qtI, 2))
 		end
