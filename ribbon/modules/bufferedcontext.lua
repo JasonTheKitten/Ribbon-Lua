@@ -1,0 +1,194 @@
+--TODO: Track updated pixels
+--TODO: Add a Z buffer
+
+local ribbon = require()
+
+local contextapi = ribbon.require "context"
+local debugger = ribbon.require "debugger"
+local util = ribbon.require "util"
+
+local bctx = ...
+
+local function getData(buffer, x, y, l, h)
+	px, py = px or 0, py or 0
+	l, h = l or buffer.width, h or buffer.height
+	local data = {x=(buffer.x or 0)+px, y=(buffer.y or 0)+py}
+	for y=0, h-1 do 
+		data[y] = {}
+		for x=0, l-1 do data[y][x] = {} end
+	end
+	for k, v in ipairs(buffer) do --todo: scroll again
+		if v.x and v.y and v.width and v.height then
+			for y=v.y, v.y+v.height-1 do 
+				data[y] = data[y] or {}
+				for x=v.x, v.x+v.width-1 do 
+					data[y][x] = {
+						v.char or data[y][x][1],
+						v.background or data[y][x][2] or 0,
+						v.foreground or data[y][x][3] or 15,
+					}
+				end
+			end
+		else
+			for y=0, h-1 do 
+				data[y] = data[y] or {}
+				for x=0, l-1 do 
+					data[y][x] = {
+						v.char or data[y][x][1],
+						v.background or data[y][x][2] or 0,
+						v.foreground or data[y][x][3] or 15,
+					}
+				end
+			end
+		end
+	end
+	
+	return data
+end
+
+bctx.wrapContext = function(ctx, es)
+	if not ctx then error("Arguments should be ctx, es", 2) end
+	
+	local internals = ctx.INTERNALS
+	if internals.isNative then
+		error("A buffered context can not be created with a native context; Please use bufferedcontext.getContext to wrap the native context.", 2)
+	end
+	internals.optimizationsEnabled = false
+	
+	local ifn = internals.IFN
+	
+	local function checkInitialized()
+		if not internals.drawing then
+			error("Attempt to use context while not drawing", 3)
+		end
+	end
+
+	local buffer = {x=ctx.position.x, y=ctx.position.y, width=ctx.width, height=ctx.height}
+	local charVisible, contextColor = true, nil
+	local onclick, onrelease, ondragstart, ondragover, ondragend
+	
+	ifn.drawPixel = function(q, x, y, color, char, fg)
+		checkInitialized()
+		char = char and charVisible and tostring(char)
+		x = (internals.xinverted and ctx.width-x-1) or x
+		q(ifn.drawFilledRect, x, y, 1, 1, color, char, fg)
+	end
+	ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
+		if x>=0 and y>=0 then
+			local pixel = {x=x, y=y, width=l, height=h}
+			pixel.char = char or " "
+			pixel.foreground = fg or internals.CONFIG.defaultTextColor
+			pixel.background = color or internals.CONFIG.defaultBackgroundColor
+			pixel.onclick = onclick
+			pixel.onrelease = onrelease
+			pixel.ondragstart = ondragstart
+			pixel.ondragover = ondragover
+			pixel.ondragend = ondragend
+			
+			table.insert(buffer, pixel)
+		end
+	end
+	
+	ctx.getPixelInfo = function(x, y, dtype)
+		for k, v in util.ripairs(buffer) do
+			if v[dtype] and 
+				(not v.x or (x>=v.x and (not v.width or x<v.x+v.width))) and 
+				(not v.y or (y>=v.y and (not v.height or y<v.y+v.height))) then
+				return v[dtype]
+			end
+		end
+	end
+	
+	ctx.clear = function(color)
+		checkInitialized()
+		
+		contextColor = color or internals.CONFIG.defaultBackgroundColor
+		
+		local screen = {}
+		buffer = {screen}
+		
+		screen.onclick = onclick
+		screen.onrelease = onrelease
+		screen.ondragstart = ondragstart
+		screen.ondragover = ondragover
+		screen.ondragend = ondragend
+	end
+	ctx.setContextColor = function(color)
+		contextColor = color or internals.CONFIG.defaultBackgroundColor
+	end
+	ctx.setColors = function(color, fg)
+		internals.CONFIG.defaultBackgroundColor = color or internals.CONFIG.defaultBackgroundColor
+		internals.CONFIG.defaultTextColor = fg or internals.CONFIG.defaultTextColor
+		if color == -1 then internals.CONFIG.defaultBackgroundColor = nil end
+		if fg == -1 then internals.CONFIG.defaultTextColor = nil end
+	end
+	
+	ctx.setClickFunction = function(f)
+		onclick = f
+	end
+	ctx.getClickFunction = function(f)
+		return f
+	end
+	
+	ctx.setPixelsVisible = function(b)
+		charVisible = true
+		if not b then charVisible = nil end
+	end
+	
+	ctx.emptyBuffer = function()
+		buffer = {}
+	end
+	ctx.setBuffer = function(b)
+		buffer = {}
+	end
+	ctx.getBuffer = function()
+		return buffer
+	end
+	
+	ctx.drawBuffer = function(x, y, l, h)
+		ctx.parent.applyBuffer(ctx.getBuffer(), x or 0, y or 0, l or ctx.width, h or ctx.height)
+		--ctx.parent.drawData(ctx.getData(x, y, l, h))
+	end
+	
+	ctx.getData = function(px, py, l, h)
+		return getData(buffer)
+	end
+	
+	local function getT(t)
+		return function(n, e)
+            local x = e.x-ctx.position.x-ctx.scroll.x
+    		local y = e.y-ctx.position.y-ctx.scroll.y
+    		if x>=0 and x<ctx.width and y>=0 and y<ctx.height then
+				local f = ctx.getPixelInfo(x, y, t)
+				if f then f({
+					x = x, y = y,
+					button = e.button,
+					display = e.display,
+					process = es,
+					context = ctx,
+					originevent = e.originevent or e
+				}) end
+    		end
+	   end
+	end
+	local function linkT(en, t)
+		t = t or en
+		if es then es.addEventListener(en, getT(t)) end
+	end
+	
+	linkT("mouse_click", "onclick")
+	linkT("mouse_up", "onrelease")
+	linkT("mouse_drag", "ondragover")
+	
+	ctx.triggers = {
+		onclick = getT("onclick"),
+		onrelease = getT("onrelease"),
+		ondragover = getT("ondragover")
+	}
+	
+	return ctx
+end
+bctx.getContext = function(p, x, y, l, h, es)
+	return bctx.wrapContext(contextapi.getContext(p, x, y, l, h), es)
+end
+bctx.getData = getData

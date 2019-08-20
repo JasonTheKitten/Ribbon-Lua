@@ -5,7 +5,6 @@ local APP = {
 	TITLE = "APPLICATION",
 	VERSION = "DEV v0.1.0 (Alpha)",
 	VERSIONRAW = {0, 1, 0},
-	TYPE = "GRAPHICAL",
 	
 	PATHS = {
 		APP = "${PATH}/app",
@@ -19,19 +18,18 @@ local APP = {
 		CRASHHANDLER = "${PATH}/app/crash.lua",
 		
 		PATH = nil,
-		CPLAT = nil,
+		RIBBON = nil,
 	},
 	
 	CONTEXT = nil,
 	PATHRESOLUTIONTRIES = 50,
-	PERMISSIONS = {}, --Not used by CPlat
 }
 
 --Configs
 --#@Configs
 
 --Glue
-local cplat
+local ribbon
 local baseError = "App failed to launch!"
 local results = {pcall(function(...)
 	--Alt require
@@ -60,7 +58,7 @@ local results = {pcall(function(...)
 	
 	--Set shell name
 	if multishell then
-		multishell.setTitle(multishell.getCurrent(), APP.TITLE)
+		multishell.setTitle(multishell.getCurrent(), APP.TITLE or "Application")
 	end
 	
 	--Config fallback
@@ -79,32 +77,41 @@ local results = {pcall(function(...)
     	end
     end
 
-	if not paths["CPLAT"] then
-        paths["CPLAT"] = paths["PATH"].."/cplat"
+	if not paths["RIBBON"] then
+        paths["RIBBON"] = paths["PATH"].."/ribbon"
 	end
+	
+	--Create environment
+	local env = {}
+	for k, v in pairs(_G) do
+		env[k] = v
+	end
+	env._ENV = env
+	env.shell = env.shell or shell
+	env.multishell = env.multishell or multishell
 	
 	--Load app
 	local err
-	local corePath = paths["CPLAT"].."/cplat.lua"
-	cplat, err = loadfile(corePath)
+	local corePath = paths["RIBBON"].."/ribbon.lua"
+	ribbon, err = loadfile(corePath, env)
 	if err then
 		baseError = "Corrupt or Missing File!"
 		error("FILE: "..corePath.."\nROR: "..err)
 	end
 	
-	--Setup CPlat
+	--Setup Ribbon
 	baseError = "App failed to launch!"
-	cplat = cplat()
+	ribbon = ribbon()
 	
 	--Setup App
-	cplat.setAppInfo(APP)
+	ribbon.setAppInfo(APP)
 	
 	--Setup debug
-	pcall(function() cplat.require("debugger").setDebugFile(APP.PATHS.DEBUGFILE) end)
+	pcall(function() ribbon.require("debugger").setDebugFile(APP.PATHS.DEBUGFILE) end)
 	
 	--Execute app
 	baseError = "Application crashed!"
-	return cplat.execute(APP.PATHS.CMD, ...)
+	return ribbon.execute(APP.PATHS.CMD, ...)
 end, ...)}
 
 --Error checking
@@ -113,13 +120,13 @@ if not results[1] then
         "A fatal error has occurred!"
 	local err = results[2] or ""
 	local ok = false
-	if type(cplat) == "table" then
-		ok = pcall(cplat.execute, APP.PATHS.CRASHHANDLER, baseError, err)
+	if type(ribbon) == "table" then
+		ok = pcall(ribbon.execute, APP.PATHS.CRASHHANDLER, baseError, err)
 	end
 	if not ok then 
 		pcall(function()
-			cplat.require("debugger").error(baseError)
-			cplat.require("debugger").error(err)
+			ribbon.require("debugger").error(baseError)
+			ribbon.require("debugger").error(err)
 		end)
 		error(baseError.."\n"..err, -1)
 	end
