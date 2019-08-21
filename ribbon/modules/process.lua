@@ -67,7 +67,7 @@ process.execute = function(f, ...)
 			eq = {}
 			local e = {natives.require("computer").pullSignal(0)}
 			while (#e>0) do
-				if e[1] == "interrupteds" then terminate() end
+				if e[1] == "interrupted" then terminate() end
 				table.insert(eq, 1, e)
 				e = {natives.require("computer").pullSignal(0)}
 			end

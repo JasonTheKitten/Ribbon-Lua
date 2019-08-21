@@ -56,8 +56,8 @@ class.checkType = function(c, e, t, m, ...)
 		end
 	end
 	if t and not o then
-		local _, err = pcall(error, "", t)
+		local _, err = pcall(error, "", t or 2)
 		local msg = ((m and "Expected "..m.." Class, got other value")  or "Incorrect Value Passed").."\n\tat "..err:sub(1, -3)
-		error(msg, t)
+		error(msg, (t or 0)+1)
 	end
 end

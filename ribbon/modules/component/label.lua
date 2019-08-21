@@ -26,7 +26,7 @@ end
 --IFN functions
 local function internalSizeProc(self, size, f)
 	local text, lastSpaceBroke = self.text, false
-	size:fixCursor()
+	size:fixCursor(self.enableWrap)
 	for i=1, #text do
 		local char = text:sub(i, i)
 		if char == "\n" then

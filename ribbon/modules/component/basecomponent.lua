@@ -18,14 +18,15 @@ basec.BaseComponent = BaseComponent
 
 BaseComponent.cparents = {Component}
 function BaseComponent:__call(ctx, es)
+	Component.__call(self)
 	self.context = ctx
-	self.children = {}
-	self.handlers = {}
-	self.functions = {}
 	self.eventSystem = process
-	self.defaultComponent = class.new(BufferedComponent, self)
-	self.defaultComponent:setAutoSize(1, 0, 1, 0)
-	self.defaultComponent:attribute("background-color", 0, "text-color", 15)
+	self.defaultComponent = class.new(BufferedComponent, self):attribute(
+		"background-color", 0, 
+		"text-color", 15,
+		"width", {1, 0},
+		"height", {1, 0}
+	)
 	self:update()
 end
 
@@ -50,7 +51,7 @@ end
 
 function BaseComponent.execute(func)
 	local cctx = {}
-	func(function(display)
+	local ok, err = pcall(func, function(display)
 		display = display or displayapi.getDefaultDisplayID()
 		if type(display) == "number" then
 			display = displayapi.getDisplay(display)
@@ -64,4 +65,5 @@ function BaseComponent.execute(func)
 		return octx
 	end)
 	for k, v in pairs(cctx) do v.endDraw() end
+	if not ok then error(err, -1) end
 end

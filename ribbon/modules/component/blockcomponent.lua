@@ -21,7 +21,7 @@ blockcomponent.BlockComponent = BlockComponent
 
 BlockComponent.cparents = {Component}
 function BlockComponent:__call(parent)
-	class.checkType(parent, Component, 3, "Component")
+	if parent then class.checkType(parent, Component, 3, "Component") end
 	
 	Component.__call(self, parent)
 	
@@ -77,10 +77,6 @@ function BlockComponent:forceSize(size)
 	self:setSize(size)
 end
 
-function BlockComponent:setAutoSize(w, ow, h, oh)
-	self.autoSize = {w, ow, h, oh}
-end
-
 --IFN functions
 function BlockComponent:setContextInternal()
 	self.context = self.context or sctx.getContext(self.parent.context, 0, 0, 0, 0)
@@ -88,47 +84,36 @@ function BlockComponent:setContextInternal()
 end
 function BlockComponent.calcSizeIFN(q, self, size)
 	if not self.parent then return end
-
 	self:setContextInternal()
 	
-	self.position = size.position:clone()
-	
-	local osize = size
-	if self.sizeAndLocation then
-		local msize = self.sizeAndLocation[1]
-		local x, y = ctxu.calcPos(self.parent.context, table.unpack(self.sizeAndLocation, 2))
-		size = class.new(SizePosGroup, msize:clone(), nil, msize:clone())
-		self.position = class.new(Position, x, y)
-		self.size = size.size
-		self.maxSize = size.maxSize
-	elseif self.sizePosGroup then
-		size = self.sizePosGroup:cloneAll()
-		self.size = size.size
-		self.position = size.position
-	elseif not self.useCustomSize then
-		if self.preferredSize then
-			self.size = self.preferredSize:clone()
-		else
-			self.size = class.new(Size, 0, 0)
-		end
-	end
-	if self.autoSize[1] or self.autoSize[2] then
+	self.size = (self.preferredSize and self.preferredSize:clone()) or class.new(Size, 0, 0)
+	if self.attributes["width"] then
 		if not self.maxSize then self.maxSize = class.new(Size, 0, 1/0) end
-		self.size.width = osize.size.width*(self.autoSize[1] or 0) + (self.autoSize[2] or 0)
+		self.size.width = size.size.width*(self.attributes.width[1] or 0) + (self.attributes.width[2] or 0)
 		self.maxSize.width = self.size.width
 	end
-	if self.autoSize[3] or self.autoSize[4] then
+	if self.attributes["height"] then
 		if not self.maxSize then self.maxSize = class.new(Size, 1/0, 0) end
-		self.size.height = osize.size.height*(self.autoSize[3] or 0) + (self.autoSize[4] or 0)
+		self.size.height = size.size.height*(self.attributes.height[1] or 0) + (self.attributes.height[2] or 0)
 		self.maxSize.height = self.size.height
 	end
+	
+	if self.location then
+		local l, oldPos = self.location, size.position
+		size.position = class.new(Position, 
+			ctxu.calcPos(self.parent.context, l[1], l[2], l[3], l[4], self.size.width, l[5], self.size.height, l[6])
+		)
+		q(function() size.position = oldPos end)
+	end
+	
+	self.position = size.position:clone()
 	
 	local msize = class.new(
 		SizePosGroup, self.size, nil, 
 		self.maxSize or size.maxSize:clone():subtractLH(self.position.x, self.position.y))
 	
 	for k, v in util.ripairs(self.children) do
-		if v.sizeAndLocation then q(v.calcSizeIFN, v, msize) end
+		if v.location then q(v.calcSizeIFN, v, msize) end
 	end
 	q(function()
 		if self.preferredSize then self.size:set(self.size:max(self.preferredSize)) end
@@ -143,7 +128,7 @@ function BlockComponent.calcSizeIFN(q, self, size)
 		self.context.setDimensions(self.size.width, self.size.height) --TODO: This is totally broken
 	end)
 	for k, v in util.ripairs(self.children) do
-		if not v.sizeAndLocation then q(v.calcSizeIFN, v, msize) end
+		if not v.location then q(v.calcSizeIFN, v, msize) end
 	end
 end
 function BlockComponent.drawIFN(q, self, hbr)

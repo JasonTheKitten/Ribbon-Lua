@@ -1,5 +1,3 @@
---TODO: Close all contexts and handles when an error occurs.
-
 --App Info
 local APP = {
 	TITLE = "APPLICATION",

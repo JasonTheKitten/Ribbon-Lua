@@ -13,9 +13,19 @@ local shell = ...
 shell.execute = function(command)
 	process.executeRaw(function()
 		if isCC then
-			natives.shell.run(command)
+			pcall(natives.shell.run, command)
 		elseif isOC then
-			natives.require("shell").execute(command)
+			pcall(natives.require("shell").execute, command)
 		end
+	end)
+end
+shell.loadfile = function(file, ...)
+	return natives.loadfile("/"..file)
+end
+shell.runfile = function(file, ...)
+	local args = {...}
+	local env
+	process.executeRaw(function()
+		pcall(natives.loadfile("/"..file, natives), table.unpack(args))
 	end)
 end

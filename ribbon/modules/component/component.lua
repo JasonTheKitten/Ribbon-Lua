@@ -19,20 +19,36 @@ component.Component = Component
 
 Component.cparents = {class.Class}
 function Component:__call(parent)
-	class.checkType(parent, Component, 3, "Component")
-	
-	self:setParent(parent)
+	if parent then
+		class.checkType(parent, Component, 3, "Component")
+		self:setParent(parent)
+	end
 	
 	self.children = {}
 	self.attributes = {}
 	self.handlers = {}
 	self.eventSystem = process.createEventSystem()
 	
-	self.handlers.onclick = function(d)
+	self.handlers.onclick = function(d, e)
 		self.eventSystem.fireEvent("click", d)
 		if self.attributes.onclick then self.attributes.onclick(d) end
 		if self.parent and self.parent.handlers.onclick then
-			self.parent.handlers.onclick(d)
+			self.parent.handlers.onclick(d, self)
+		end
+		for k, v in pairs(self.children) do
+			if not rawequal(v, e) and v.handlers.onexternalclick then
+				v.handlers.onexternalclick(d)
+			end
+		end
+	end
+	self.handlers.onexternalclick = function(d)
+		--TODO: Handle arg "d" better
+		self.eventSystem.fireEvent("external_click", d)
+		if self.attributes.onexternalclick then self.attributes.onexternalclick(d) end
+		for k, v in pairs(self.children) do
+			if v.handlers.onexternalclick then
+				v.handlers.onexternalclick()
+			end
 		end
 	end
 end
@@ -60,6 +76,7 @@ function Component:delete()
 	end
 end
 function Component:setParent(parent)
+	class.checkType(parent, Component, 2, "Component")
 	self:delete()
 	if parent then
 		self.parent = parent
@@ -81,6 +98,13 @@ end
 function Component:processAttributes(updated)
 	self.color = self.attributes["background-color"]
 	self.textColor = self.attributes["text-color"]
+	self.location = self.attributes["location"]
+	if updated["children"] then
+		self:removeChildren()
+		for k, v in ipairs(self.attributes["children"] or {}) do
+			v:setParent(self)
+		end
+	end
 end
 function Component:getAttribute(n)
 	self:processAttributesReverse(n)
@@ -94,24 +118,21 @@ function Component:addEventListener(e, f)
 	self.eventSystem.addEventListener(e, f)
 end
 
-function Component:setDebugID(id)
-	self.debugID = id or ("Component "..tostring(self):gsub(".+: ", ""))
-end
 function Component:debug(...)
-	local str = self.debugID..": "
+	local str = (self.attributes["debugID"] or ("Component "..tostring(self):gsub(".+: ", "")))..":"
 	for k, v in pairs({...}) do str=str..tostring(v) end
 	debugger.log(str)
 end
 
-function Component:setSizePosGroup(spg)
-	self.sizePosGroup = spg
+function Component:getComponentByID(id)
+	local rtn
+	util.runIFN(id, function()
+		
+	end)
+	return rtn
 end
-function Component:setSizeAndLocation(size, ax, px, ay, py, ol, oh)
-	self.sizeAndLocation = {size, ax, px, ay, py, size.width, ol, size.height, oh}
-end
-function Component:clearSizeOverrides()
-	self.sizePosGroup = nil
-	self.sizeAndLocation = nil
+function Component.getComponentByID_IFN(q, id, s)
+	
 end
 
 function Component:calcSize(size)
@@ -127,21 +148,21 @@ function Component:calcSize(size)
 end
 function Component.calcSizeIFN(q, self, size)
 	if not self.parent then return end
-
 	self.context = self.parent.context
-	if self.sizeAndLocation then
-		local msize = self.sizeAndLocation[1]
-		local x, y = ctxu.calcPos(self.parent.context, table.unpack(self.sizeAndLocation, 2))
-		size = class.new(SizePosGroup, msize, class.new(Position, x, y), msize)
-	else
-		size = self.sizePosGroup or size
+	
+	if self.location then
+		local l, oldPos = self.location, size.position
+		size.position = class.new(Position, 
+			ctxu.calcPos(self.parent.context, l[1], l[2], l[3], l[4], 0, l[5], 0, l[6])
+		)
+		q(function() size.position = oldPos end)
 	end
 	
 	for k, v in util.ripairs(self.children) do
-		if v.sizeAndLocation then q(v.calcSizeIFN, v, msize) end
+		if v.location then q(v.calcSizeIFN, v, size) end
 	end
 	for k, v in util.ripairs(self.children) do
-		if not v.sizeAndLocation then q(v.calcSizeIFN, v, size) end
+		if not v.location then q(v.calcSizeIFN, v, size) end
 	end
 end
 

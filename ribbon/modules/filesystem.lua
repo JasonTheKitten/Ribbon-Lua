@@ -132,3 +132,8 @@ filesystem.getName = function(f)
 	for part in f:gmatch("([^/]+)") do name=part end
 	return name
 end
+filesystem.getExtension = function(f)
+	local ext = ""
+	for part in filesystem.getName(f):gmatch("([^%.]+)") do ext=part end
+	return ext
+end

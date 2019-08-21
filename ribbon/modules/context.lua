@@ -387,10 +387,15 @@ context.getNativeContext = function(display)
 			getSimulated = function() 
 				local disp = resolveDisplay()
 				return not (disp and pcall(disp.isColor))
+				--Quick note, we are not actually using the result of isColor here
 			end,
 			getSize = function()
 				if term.getSimulated() then return 0, 0 end
 				return resolveDisplay().getSize()
+			end,
+			isColor = function()
+				if term.getSimulated() then return false end
+				return resolveDisplay().isColor()
 			end
 		}
 		setmetatable(term, {__index=function(t, k)
@@ -421,7 +426,11 @@ context.getNativeContext = function(display)
 					x=ctx.width-x-#str
 				end
 				term.setCursorPos(x+1, y+1)
-				term.blit(str, fstr:gsub(" ", "0"), bstr:gsub(" ", "f"))
+				if ctx.INTERNALS.isColor then
+					term.blit(str, fstr:gsub(" ", "0"), bstr:gsub(" ", "f"))
+				else
+					term.write(str)
+				end
 			end
 			ifn.drawData = function(q, data)
 				checkInitialized(internals)
@@ -465,9 +474,9 @@ context.getNativeContext = function(display)
 			
 			x, y = x-ctx.scroll.x, y-ctx.scroll.y
 			
-			x = (ctx.INTERNALS.xinverted and ctx.width-x-1) or x
+			x = (internals.xinverted and ctx.width-x-1) or x
 			
-			if ctx.INTERNALS.isColor then
+			if internals.isColor then
 				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor or 15))
 				term.setTextColor(2^(fg or internals.CONFIG.defaultTextColor or 0))
 			end
@@ -501,7 +510,7 @@ context.getNativeContext = function(display)
 		end
 		ctx.update = function()
 			ctx.width, ctx.height = term.getSize()
-			ctx.INTERNALS.isColor = ctx.INTERNALS.enableColor and term.isColor()
+			internals.isColor = internals.enableColor and term.isColor()
 		end
 		ctx.setAutoSize = function()
 			error("Cannot set autosize on native conext")
@@ -525,10 +534,12 @@ context.getNativeContext = function(display)
 			getSimulated = function() return not gpu or not gpu.getScreen() end,
 			getSize = function() if gpu then return gpu.getViewport() else return 1, 1 end end,
 			setBackground = function(color)
+				color = color or 15
 				if color>15 then error("Extended pallete coming at a later time", 3) end
 				if gpu then pcall(gpu.setBackground, color, true) end
 			end, 
 			setForeground = function(color)
+				color = color or 0
 				if color>15 then error("Extended pallete coming at a later time", 3) end
 				if gpu then pcall(gpu.setForeground, color, true) end
 			end,
