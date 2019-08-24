@@ -32,17 +32,27 @@ util.ripairs = function(tbl)
 	end
 end
 
-util.unpackNoNil = function(tbl, pos)
-	local unpacked, pos, high = {}, pos-1, 0
-	for k, v in pairs(tbl) do
-		if type(k) == "number" and k>pos then
-			unpacked[k-pos] = v
-			
-			high = math.max(high, k-pos)
+util.getHighestIndice = function(tbl)
+    local high = 0
+    for k, v in pairs(tbl) do
+		if type(k) == "number" then
+			high = math.max(high, k)
 		end
 	end
-	for i=1, high do
-		unpacked[i] = unpacked[i] or false
+	return high
+end
+
+util.unpack = function(tbl, pos)
+    local str, pos, high = "return ", pos or 1, util.getHighestIndice(tbl)
+    for i=pos, high do
+		str=str.."tbl["..tostring(i).."],"
+	end
+    return loadstring(str:sub(1, -1), "t", "util<unpack>", {tbl=tbl})()
+end
+util.unpackNoNil = function(tbl, pos, value)
+	local unpacked, pos, high = {}, pos or 1, util.getHighestIndice(tbl)
+	for i=pos, high do
+		unpacked[i-pos+1] = tbl[i] or value or false
 	end
 	return table.unpack(unpacked)
 end

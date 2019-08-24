@@ -16,7 +16,7 @@ label.Label = Label
 
 Label.cparents = {Component}
 function Label:__call(parent, text, enableWrap)
-	class.checkType(parent, Component, 3, "Component")
+	if parent then class.checkType(parent, Component, 3, "Component") end
 	Component.__call(self, parent, text)
 	
 	self.text = text

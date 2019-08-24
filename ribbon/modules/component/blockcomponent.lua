@@ -135,17 +135,20 @@ function BlockComponent.drawIFN(q, self, hbr)
 	if not self.parent then return end
 	
 	local obg, ofg = self.context.getColors()
-	local ocf = self.context.getClickFunction()
-	self.context.setClickFunction(self.handlers.onclick)
-	self.context.setColorsRaw(self.color or obg, self.textColor or ofg)
+	local dbg, dfg = self.context.parent.getColors()
+	local of = self.context.getFunctions()
+	self.context.setFunction("onclick", self.handlers.onclick)
+	self.context.setFunction("ondrag", self.handlers.ondrag)
+	self.context.setFunction("onrelease", self.handlers.onrelease)
+	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
 	q(function()
 		self.context.endDraw()
 		self.context.setColorsRaw(obg, ofg)
-		self.context.setClickFunction(ocf)
+		self.context.setFunctions(of)
 	end)
 	
-	self.context.clear(self.color or obg)
+	self.context.clear()
 	
 	for k, v in util.ripairs(self.children) do
 		q(v.drawIFN, v, size)

@@ -18,7 +18,7 @@ breakc.Break = Break
 
 Break.cparents = {Component}
 function Break:__call(parent)
-	class.checkType(parent, Component, 3, "Component")
+	if parent then class.checkType(parent, Component, 3, "Component") end
 	
 	Component.__call(self, parent)
 end

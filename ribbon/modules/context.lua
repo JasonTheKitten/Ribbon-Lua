@@ -28,7 +28,7 @@ end
 local function checkInitialized(internals)
 	if not internals.drawing then error("Attempt to use context while not drawing", 3) end
 end
-local function checkLH(ctx, l, h)
+local function checkLH(l, h)
 	if not l or not h then error("Arguments missing", 3) end
 	return l<1 or h<1
 end
@@ -133,7 +133,7 @@ context.getContext = function(parent, x, y, l, h)
 	end
 
 	ctx.drawRect = function(x, y, l, h, fill, color, char, fg)
-		if checkLH(ctx, l, h) then return end
+		if checkLH(l, h) then return end
 		char = char and tostring(char) or " "
 		runIFN((fill==false and ifn.drawEmptyRect) or ifn.drawFilledRect, x, y, l, h, color, char, fg)
 		local nx, ny = x+l, y+h
@@ -766,7 +766,7 @@ context.getNativeContext = function(display)
 			internals.drawing = false
 
 			if term.getSimulated() then return end
-			gpu.bind(internals.backup.screen, false)
+			pcall(gpu.bind, internals.backup.screen, false)
 			pcall(gpu.setDepth, internals.backup.depth)
 			pcall(gpu.setBackground, internals.backup.theme.bg)
 			pcall(gpu.setForeground, internals.backup.theme.fg)

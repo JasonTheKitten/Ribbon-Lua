@@ -1,4 +1,4 @@
---TODO: Align components on top
+--TODO: Align components on side
 local ribbon = require()
 
 local class = ribbon.require "class"
@@ -6,12 +6,12 @@ local class = ribbon.require "class"
 local BlockComponent = ribbon.require("component/blockcomponent").BlockComponent
 local Component = ribbon.require("component/component").Component
 
-local hspan = ...
-local HSpan = {}
-hspan.HSpan = HSpan
+local vspan = ...
+local VSpan = {}
+vspan.VSpan = VSpan
 
-HSpan.cparents = {BlockComponent}
-function HSpan:__call(parent)
+VSpan.cparents = {BlockComponent}
+function VSpan:__call(parent)
     if parent then class.checkType(parent, Component, 3, "Component") end
 	BlockComponent.__call(self, parent)
 end

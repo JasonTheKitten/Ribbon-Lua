@@ -29,30 +29,68 @@ function Component:__call(parent)
 	self.handlers = {}
 	self.eventSystem = process.createEventSystem()
 	
-	self.handlers.onclick = function(d, e)
-		self.eventSystem.fireEvent("click", d)
-		if self.attributes.onclick then self.attributes.onclick(d) end
-		if self.parent and self.parent.handlers.onclick then
-			self.parent.handlers.onclick(d, self)
-		end
-		for k, v in pairs(self.children) do
-			if not rawequal(v, e) and v.handlers.onexternalclick then
-				v.handlers.onexternalclick(d)
-			end
+	self.attributes["enabled"] = true
+	
+	local function regH(t, enableRequired)
+        self.handlers["on"..t] = function(d, e)
+    		self.eventSystem.fireEvent(t, d)
+    		if self.attributes["on"..t] and (not enableRequired or self.attributes.enabled) then self.attributes["on"..t](d, self) end
+    		if self.parent and self.parent.handlers["on"..t] then
+    			self.parent.handlers["on"..t](d, self)
+    		end
+    		for k, v in util.ripairs(self.children) do
+    			if not rawequal(v, e) and v.handlers["onexternal"..t] then
+    				v.handlers["onexternal"..t](d)
+    			end
+    		end
+    	end
+    	self.handlers["onexternal"..t] = function(d)
+    		--TODO: Handle arg "d" better
+    		self.eventSystem.fireEvent("external_"..t, d)
+    		if self.attributes["onexternal"..t] then self.attributes["onexternal"..t](d, self) end
+    		for k, v in util.ripairs(self.children) do
+    			if v.handlers["onexternal"..t] then
+    				v.handlers["onexternal"..t](d)
+    			end
+    		end
+    	end
+	end
+	regH("click", true)
+	regH("drag", true)
+	regH("release", true)
+	self.handlers.onupdate = function()
+		self.eventSystem.fireEvent("component_update", nil)
+		if self.attributes.onupdate then self.attributes.onupdate(nil) end
+		if self.parent and self.parent.handlers.onupdate then
+			self.parent.handlers.onupdate(nil, self)
 		end
 	end
-	self.handlers.onexternalclick = function(d)
-		--TODO: Handle arg "d" better
-		self.eventSystem.fireEvent("external_click", d)
-		if self.attributes.onexternalclick then self.attributes.onexternalclick(d) end
-		for k, v in pairs(self.children) do
-			if v.handlers.onexternalclick then
-				v.handlers.onexternalclick()
-			end
-		end
+	
+	local function setActiveEvent(n, e)
+		if e.button == 1 and self.attributes["enabled"] then
+            self:attribute("hover", true)
+            self:fireUpdateEvent()
+        end
 	end
+	local function setUnhoverEvent(n, e)
+		if e.button == 1 and self.attributes["enabled"] then
+            self:attribute("hover", false)
+            self:fireUpdateEvent()
+        end
+	end
+	
+	self:addEventListener("click", setActiveEvent)
+	self:addEventListener("external_click", setUnhoverEvent)
+	self:addEventListener("drag", setActiveEvent)
+	self:addEventListener("release", setUnhoverEvent)
+	self:addEventListener("external_drag", setUnhoverEvent)
 end
 
+function Component:delete()
+	if self.parent then
+		self.parent:removeChild(self)
+	end
+end
 function Component:removeChild(child)
 	for k, v in pairs(self.children) do
 		if rawequal(child, v) then
@@ -62,6 +100,7 @@ function Component:removeChild(child)
 			break
 		end
 	end
+	self:fireUpdateEvent()
 end
 function Component:removeChildren()
 	for i=1, #self.children do
@@ -69,19 +108,18 @@ function Component:removeChildren()
 		self.children[i].context = nil
 	end
 	self.children = {}
+	self:fireUpdateEvent()
 end
-function Component:delete()
-	if self.parent then
-		self.parent:removeChild(self)
-	end
+function Component:addChild(child)
+    class.checkType(child, Component, 2, "Component")
+    child:delete()
+    child.parent = self
+	table.insert(self.children, child)
+	self:fireUpdateEvent()
 end
 function Component:setParent(parent)
 	class.checkType(parent, Component, 2, "Component")
-	self:delete()
-	if parent then
-		self.parent = parent
-		table.insert(parent.children, self)
-	end
+	if parent then parent:addChild(self) end
 end
 
 function Component:attribute(...)
@@ -96,8 +134,6 @@ function Component:attribute(...)
 	return self
 end
 function Component:processAttributes(updated)
-	self.color = self.attributes["background-color"]
-	self.textColor = self.attributes["text-color"]
 	self.location = self.attributes["location"]
 	if updated["children"] then
 		self:removeChildren()
@@ -105,6 +141,16 @@ function Component:processAttributes(updated)
 			v:setParent(self)
 		end
 	end
+	if updated["background-color"] or updated["text-color"] 
+        or updated["hover-background-color"] or updated["hover-text-color"]
+		or updated["hover"] then
+        
+        self.color = (self.attributes.hover and self.attributes["hover-background-color"]) or 
+            self.attributes["background-color"]
+        self.textColor = (self.attributes.hover and self.attributes["hover-text-color"]) or 
+            self.attributes["text-color"]
+    end
+	self:fireUpdateEvent()
 end
 function Component:getAttribute(n)
 	self:processAttributesReverse(n)
@@ -126,13 +172,22 @@ end
 
 function Component:getComponentByID(id)
 	local rtn
-	util.runIFN(id, function()
-		
+	util.runIFN(self.getComponentByID_IFN, self, id, function(v)
+		rtn = v
 	end)
 	return rtn
 end
-function Component.getComponentByID_IFN(q, id, s)
-	
+function Component.getComponentByID_IFN(q, self, id, s)
+    if self.attributes["id"] == id then
+        s(self)
+    end
+	for k, v in util.ripairs(self.children) do
+        q(v.getComponentByID_IFN, v, id, s)	
+	end
+end
+
+function Component:fireUpdateEvent()
+    self.handlers.onupdate()
 end
 
 function Component:calcSize(size)
@@ -172,13 +227,16 @@ end
 function Component.drawIFN(q, self)
 	if not self.parent then return end
 
+	local of = self.context.getFunctions()
+	self.context.setFunction("onclick", self.handlers.onclick)
+	self.context.setFunction("ondrag", self.handlers.ondrag)
+	self.context.setFunction("onrelease", self.handlers.onrelease)
+	
 	local obg, ofg = self.context.getColors()
-	local ocf = self.context.getClickFunction()
-	self.context.setClickFunction(self.handlers.onclick)
 	self.context.setColorsRaw(self.color or obg, self.textColor or ofg)
 	q(function()
 		self.context.setColorsRaw(obg, ofg)
-		self.context.setClickFunction(ocf)
+		self.context.setFunctions(of)
 	end)
 	for k, v in util.ripairs(self.children) do
 		if not v.sizePosGroup then q(v.drawIFN, v) end

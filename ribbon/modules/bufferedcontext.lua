@@ -65,7 +65,7 @@ bctx.wrapContext = function(ctx, es)
 
 	local buffer = {x=ctx.position.x, y=ctx.position.y, width=ctx.width, height=ctx.height}
 	local charVisible, contextColor = true, nil
-	local onclick, onrelease, ondragstart, ondragover, ondragend
+	local functions = {}
 	
 	ifn.drawPixel = function(q, x, y, color, char, fg)
 		checkInitialized()
@@ -75,26 +75,22 @@ bctx.wrapContext = function(ctx, es)
 	end
 	ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
 		if x>=0 and y>=0 then
-			local pixel = {x=x, y=y, width=l, height=h}
+			local pixel = {x=x, y=y, width=l, height=h, functions = {}}
 			pixel.char = char or " "
 			pixel.foreground = fg or internals.CONFIG.defaultTextColor
 			pixel.background = color or internals.CONFIG.defaultBackgroundColor
-			pixel.onclick = onclick
-			pixel.onrelease = onrelease
-			pixel.ondragstart = ondragstart
-			pixel.ondragover = ondragover
-			pixel.ondragend = ondragend
+			pixel.functions = util.copy(functions)
 			
 			table.insert(buffer, pixel)
 		end
 	end
 	
-	ctx.getPixelInfo = function(x, y, dtype)
+	ctx.getPixelInfo = function(x, y, dtype, iF)
 		for k, v in util.ripairs(buffer) do
-			if v[dtype] and 
+			if ((iF and v.functions[dtype]) or (not iF and v[dtype])) and 
 				(not v.x or (x>=v.x and (not v.width or x<v.x+v.width))) and 
 				(not v.y or (y>=v.y and (not v.height or y<v.y+v.height))) then
-				return v[dtype]
+				if iF then return v.functions[dtype] else return v[dtype] end
 			end
 		end
 	end
@@ -104,14 +100,12 @@ bctx.wrapContext = function(ctx, es)
 		
 		contextColor = color or internals.CONFIG.defaultBackgroundColor
 		
-		local screen = {}
+		local screen = {functions = {}}
 		buffer = {screen}
 		
-		screen.onclick = onclick
-		screen.onrelease = onrelease
-		screen.ondragstart = ondragstart
-		screen.ondragover = ondragover
-		screen.ondragend = ondragend
+        for k, v in pairs(functions) do
+            screen.functions[k] = v
+        end
 	end
 	ctx.setContextColor = function(color)
 		contextColor = color or internals.CONFIG.defaultBackgroundColor
@@ -123,11 +117,20 @@ bctx.wrapContext = function(ctx, es)
 		if fg == -1 then internals.CONFIG.defaultTextColor = nil end
 	end
 	
-	ctx.setClickFunction = function(f)
-		onclick = f
+	ctx.useFunctions = function(f)
+	   for k, v in pairs(f) do functions[k] = v end
 	end
-	ctx.getClickFunction = function(f)
-		return f
+	ctx.setFunctions = function(f)
+		functions = util.copy(f)
+	end
+	ctx.setFunction = function(t, f)
+		functions[t] = f
+	end
+	ctx.getFunctions = function()
+		return util.copy(functions)
+	end
+	ctx.getFunction = function(t)
+		return functions[t]
 	end
 	
 	ctx.setPixelsVisible = function(b)
@@ -159,7 +162,7 @@ bctx.wrapContext = function(ctx, es)
             local x = e.x-ctx.position.x-ctx.scroll.x
     		local y = e.y-ctx.position.y-ctx.scroll.y
     		if x>=0 and x<ctx.width and y>=0 and y<ctx.height then
-				local f = ctx.getPixelInfo(x, y, t)
+				local f = ctx.getPixelInfo(x, y, t, true)
 				if f then f({
 					x = x, y = y,
 					button = e.button,
@@ -178,12 +181,12 @@ bctx.wrapContext = function(ctx, es)
 	
 	linkT("mouse_click", "onclick")
 	linkT("mouse_up", "onrelease")
-	linkT("mouse_drag", "ondragover")
+	linkT("mouse_drag", "ondrag")
 	
 	ctx.triggers = {
 		onclick = getT("onclick"),
 		onrelease = getT("onrelease"),
-		ondragover = getT("ondragover")
+		ondragover = getT("ondragover"),
 	}
 	
 	return ctx
