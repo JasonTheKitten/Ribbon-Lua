@@ -70,21 +70,40 @@ end
 --Require Ribbon modules
 local required = {}
 ribbon.require = function(p)
-    if required[p] then
-        return required[p]
+    if not required[p] then
+        required[p] = {}
+    	local m, err=env.loadfile(ribbon.resolvePath(
+            "${RIBBON}/modules/${module}.lua", {module=p}
+        ), "tb", env)
+    	if not m then error("Failed to load module \""..p.."\" because:\n"..err, 2) end
+    	local extramethods=m(required[p])
+    	
+    	setmetatable(required[p], {
+    		__index=extramethods
+    	})
     end
-    required[p] = {}
-	local m, err=env.loadfile(ribbon.resolvePath(
-        "${RIBBON}/modules/${module}.lua", {module=p}
-    ), "t", env)
-	if not m then error("Failed to load module \""..p.."\" because:\n"..err, 2) end
-	local extramethods=m(required[p])
-	
-	setmetatable(required[p], {
-		__index=extramethods
-	})
 	
     return required[p]
+end
+
+--Ribbon path loading
+local reqpaths = {}
+ribbon.reqpath = function(path, resolve, useLua)
+    if resolve~=false then
+        resolve = (type(resolve)=="table" and resolve) or {}
+        path = ribbon.resolvePath(path, resolve)..(useLua~=false and ".lua" or "")
+    end
+    path = ribbon.require("filesystem").getFullPath(path) --TODO: Support relative paths
+    if not reqpaths[path] then
+        reqpaths[path] = {}
+        local m, err = env.loadfile(path, "tb", env)
+        if not m then error("Failed to require path \""..path.."\" because:\n"..err, 2) end
+    	local extramethods=m(reqpaths[path])
+        setmetatable(reqpaths[path], {
+    		__index=extramethods
+    	})
+    end
+    return reqpaths[path]
 end
 
 --Execute

@@ -6,6 +6,7 @@
 --TODO: Move interrupts enabled check, queue interrupts, add clear interrupts function
 
 local ribbon = require()
+
 local environment = ribbon.require "environment"
 local util = ribbon.require "util"
 local debugger = ribbon.require "debugger"

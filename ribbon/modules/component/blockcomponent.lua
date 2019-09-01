@@ -79,11 +79,19 @@ end
 
 --IFN functions
 function BlockComponent:setContextInternal()
-	self.context = self.context or sctx.getContext(self.parent.context, 0, 0, 0, 0)
-	self.context.parent = self.parent.context
+	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.parent.childcontext
+	self.context = self.context or sctx.getContext(self.dockcontext, 0, 0, 0, 0)
+	self.context.parent = self.dockcontext
+	self.childcontext = self.context
 end
 function BlockComponent.calcSizeIFN(q, self, size)
 	if not self.parent then return end
+	
+	if self.attributes["dock"] then
+		size = self.attributes["dock"].spg
+	end
+	self.spg = size
+	
 	self:setContextInternal()
 	
 	self.size = (self.preferredSize and self.preferredSize:clone()) or class.new(Size, 0, 0)
@@ -101,7 +109,7 @@ function BlockComponent.calcSizeIFN(q, self, size)
 	if self.location then
 		local l, oldPos = self.location, size.position
 		size.position = class.new(Position, 
-			ctxu.calcPos(self.parent.context, l[1], l[2], l[3], l[4], self.size.width, l[5], self.size.height, l[6])
+			ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], self.size.width, l[5], self.size.height, l[6])
 		)
 		q(function() size.position = oldPos end)
 	end
@@ -135,7 +143,7 @@ function BlockComponent.drawIFN(q, self, hbr)
 	if not self.parent then return end
 	
 	local obg, ofg = self.context.getColors()
-	local dbg, dfg = self.context.parent.getColors()
+	local dbg, dfg = self.parent.context.getColors()
 	local of = self.context.getFunctions()
 	self.context.setFunction("onclick", self.handlers.onclick)
 	self.context.setFunction("ondrag", self.handlers.ondrag)

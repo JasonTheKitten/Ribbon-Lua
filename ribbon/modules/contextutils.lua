@@ -16,6 +16,20 @@ contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph)
 		math.floor(ay+ctx.height*py+oy)
 end
 
+contextutils.translateMouseCordsUp = function(ctx, x, y, parent)
+    local cctx = ctx
+    while cctx and cctx~=parent do
+        x=x-cctx.position.x
+        y=y-cctx.position.y
+        cctx=cctx.parent
+    end
+    if parent and cctx~=parent then
+        error("Unable to resolve cords: Invalid parent", 2)
+    end
+    return x, y
+end
+
+
 --String Lib
 local function splitNoGM(text)
 	text = tostring(text)
@@ -65,7 +79,7 @@ contextutils.ALIGN_CENTER = 1
 contextutils.ALIGN_RIGHT = 2
 contextutils.align = function(text, mode, l, pad)
 	text = tostring(text)
-	text = text:gsub("\t", "  ") --TODO: Handle with logic instead
+	--text = text:gsub("\t", "  ") --TODO: Handle with logic instead
 	pad=pad or " "
 	if mode==contextutils.ALIGN_LEFT then
 		local ll=l or contextutils.getLineLength(text)

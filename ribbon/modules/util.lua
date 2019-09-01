@@ -2,7 +2,6 @@ local ribbon = require()
 
 local fs = ribbon.require "filesystem"
 
---TODO: util.reverse
 local util = ...
 
 --Tables
@@ -14,6 +13,13 @@ util.copy = function(val)
 	else
 		return val
 	end
+end
+util.reverse = function(tbl, reversed)
+	reversed = reversed or {}
+	for k, v in pairs(tbl) do
+		reversed[v] = k
+	end
+	return reversed
 end
 
 util.pairs = function(tbl)
@@ -31,8 +37,16 @@ util.ripairs = function(tbl)
 		end
 	end
 end
-
-util.getHighestIndice = function(tbl)
+util.findValue = function(tbl, val)
+    local matches = {}
+    for k, v in pairs(tbl) do
+        if rawequal(v, val) then
+            table.insert(matches, k)
+        end
+    end
+    return matches
+end
+util.getHighestIndex = function(tbl)
     local high = 0
     for k, v in pairs(tbl) do
 		if type(k) == "number" then
@@ -41,22 +55,6 @@ util.getHighestIndice = function(tbl)
 	end
 	return high
 end
-
-util.unpack = function(tbl, pos)
-    local str, pos, high = "return ", pos or 1, util.getHighestIndice(tbl)
-    for i=pos, high do
-		str=str.."tbl["..tostring(i).."],"
-	end
-    return loadstring(str:sub(1, -1), "t", "util<unpack>", {tbl=tbl})()
-end
-util.unpackNoNil = function(tbl, pos, value)
-	local unpacked, pos, high = {}, pos or 1, util.getHighestIndice(tbl)
-	for i=pos, high do
-		unpacked[i-pos+1] = tbl[i] or value or false
-	end
-	return table.unpack(unpacked)
-end
-
 util.stringToTable = function(s, r, t)
 	t = t or {}
 	for i=1, #s do
@@ -67,6 +65,45 @@ util.stringToTable = function(s, r, t)
 		end
 	end
 	return t
+end
+util.split = function(str, l)
+    local split = {}
+    for part in str:gmatch("([^%.]+)") do
+        table.insert(split, part)
+    end
+    return split
+end
+
+util.merge = function(tbl1, tbl2)
+    for k, v in pairs(tbl2) do tbl1[k] = v end
+end
+util.union = function(tbl1, tbl2)
+    for k, v in ipairs(tbl2) do table.insert(tbl1, v) end
+end
+util.slice = function(tbl1, tbl2, index)
+    if index>0 then
+        while tbl1[index] do
+            table.insert(tbl2, tbl1[index])
+            table.remove(tbl1, index)
+        end
+    else
+        --TODO
+    end
+end
+
+util.unpack = function(tbl, pos)
+    local str, pos, high = "return ", pos or 1, util.getHighestIndex(tbl)
+    for i=pos, high do
+		str=str.."tbl["..tostring(i).."],"
+	end
+    return loadstring(str:sub(1, -1), "t", "util<unpack>", {tbl=tbl})()
+end
+util.unpackNoNil = function(tbl, pos, value)
+	local unpacked, pos, high = {}, pos or 1, util.getHighestIndex(tbl)
+	for i=pos, high do
+		unpacked[i-pos+1] = tbl[i] or value or false
+	end
+	return table.unpack(unpacked)
 end
 
 --File ops

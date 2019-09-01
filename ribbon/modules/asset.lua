@@ -1,16 +1,18 @@
 local ribbon = require()
 
-local util = require "util"
+local util = ribbon.require "util"
 
 local asset = ...
 
 local groups = {}
 asset.load = function(g, f)
+    local unserialize = util.unserialize
+
 	local data
 	if type(f) == "table" then
 		data = f
 	else
-		data = util.unserialize(util.inf(f))
+		data = unserialize(util.inf(f))
 	end
 	
 	g = g or {}
@@ -26,10 +28,11 @@ end
 asset.get = function(g)
 	return groups[g]
 end
-asset.save = function(g, f)
+asset.save = function(g, f, json)
+    local serialize = (json and util.serializeJSON) or util.serialize
 	if type(g) == "string" then
-		return util.outf(f, util.serialize(groups[g]))
+		return util.outf(f, serialize(groups[g]))
 	else
-		return util.outf(f, util.serialize(g))
+		return util.outf(f, serialize(g))
 	end
 end

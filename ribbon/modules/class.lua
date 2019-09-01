@@ -1,5 +1,27 @@
 local class = ...
 
+--Class
+local Class = {}
+class.Class = Class
+
+Class.cparents = {}
+Class.__eq = rawequal
+function Class:isA(class)
+	local queue = {self}
+	local p=0
+	while #queue>p do
+		p=p+1
+		if rawequal(queue[p], class) then
+			return true
+		end
+		for i=#queue[p].cparents, 1, -1 do
+			table.insert(queue, queue[p].cparents[i])
+		end
+	end
+	return false
+end
+
+--class
 class.new = function(class, ...)
 	if not class then error("No class provided", 2) end
 	function class:__index(key)
@@ -24,26 +46,6 @@ class.new = function(class, ...)
 	
 	return rtn
 end
-
---Class
-local Class = {}
-Class.cparents = {}
-Class.__eq = rawequal
-function Class:isA(class)
-	local queue = {self}
-	local p=0
-	while #queue>p do
-		p=p+1
-		if rawequal(queue[p], class) then
-			return true
-		end
-		for i=#queue[p].cparents, 1, -1 do
-			table.insert(queue, queue[p].cparents[i])
-		end
-	end
-	return false
-end
-class.Class = Class
 
 class.checkType = function(c, e, t, m, ...)
 	local args = {...}

@@ -32,8 +32,10 @@ end
 
 --IFN functions
 function BufferedComponent:setContextInternal()
-	self.context = self.context or bctx.getContext(self.parent.context, 0, 0, 0, 0, self.parent.eventSystem)
-	self.context.parent = self.parent.context
+	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.parent.childcontext
+	self.context = self.context or bctx.getContext(self.dockcontext, 0, 0, 0, 0, self.parent.eventSystem)
+	self.context.parent = self.dockcontext
+	self.childcontext = self.context
 end
 function BufferedComponent.drawIFN(q, self, hbr)
 	if not self.parent then return end
@@ -44,7 +46,7 @@ function BufferedComponent.drawIFN(q, self, hbr)
 	self.context.setFunction("onrelease", self.handlers.onrelease)
 	
 	local obg, ofg = self.context.getColors()
-	local dbg, dfg = self.context.parent.getColors()
+	local dbg, dfg = self.parent.context.getColors()
 	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
 	
@@ -54,13 +56,13 @@ function BufferedComponent.drawIFN(q, self, hbr)
 		self.context.setFunctions(of)
 		
 		local ofp
-		if self.context.parent.setFunction then
-			ofp = self.context.parent.getFunctions()
-			self.context.parent.useFunctions(self.context.triggers)
+		if self.dockcontext.setFunction then
+			ofp = self.dockcontext.getFunctions()
+			self.dockcontext.useFunctions(self.context.triggers)
 		end
 		self.context.drawBuffer()
 		if ofp then
-			self.context.parent.setFunctions(ofp)
+			self.dockcontext.setFunctions(ofp)
 		end
 	end)
 	

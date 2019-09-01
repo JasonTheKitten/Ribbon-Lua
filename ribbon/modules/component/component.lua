@@ -135,6 +135,9 @@ function Component:attribute(...)
 end
 function Component:processAttributes(updated)
 	self.location = self.attributes["location"]
+	if updated["parent"] then
+	   self:setParent(self.attributes["parent"])
+	end
 	if updated["children"] then
 		self:removeChildren()
 		for k, v in ipairs(self.attributes["children"] or {}) do
@@ -157,7 +160,7 @@ function Component:getAttribute(n)
 	return self.attributes[n]
 end
 function Component:processAttributesReverse(n)
-	
+	self.attributes["parent"] = self.parent
 end
 
 function Component:addEventListener(e, f)
@@ -169,7 +172,15 @@ function Component:debug(...)
 	for k, v in pairs({...}) do str=str..tostring(v) end
 	debugger.log(str)
 end
+function Component:customDebug(logfunc, ...)
+	local str = (self.attributes["debugID"] or ("Component "..tostring(self):gsub(".+: ", "")))..":"
+	for k, v in pairs({...}) do str=str..tostring(v) end
+	logfunc(str)
+end
 
+function Component:getBaseComponent()
+	return (not self.parent and self) or self.parent:getBaseComponent()
+end
 function Component:getComponentByID(id)
 	local rtn
 	util.runIFN(self.getComponentByID_IFN, self, id, function(v)
@@ -203,15 +214,24 @@ function Component:calcSize(size)
 end
 function Component.calcSizeIFN(q, self, size)
 	if not self.parent then return end
-	self.context = self.parent.context
+	
+	if self.attributes["dock"] then
+		size = self.attributes["dock"].spg
+	end
+	self.spg = size
+	
+	self.context = self.parent.childcontext
+	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.context
+	self.childcontext = self.dockcontext
 	
 	if self.location then
 		local l, oldPos = self.location, size.position
 		size.position = class.new(Position, 
-			ctxu.calcPos(self.parent.context, l[1], l[2], l[3], l[4], 0, l[5], 0, l[6])
+			ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], 0, l[5], 0, l[6])
 		)
 		q(function() size.position = oldPos end)
 	end
+	q(function() size:fixCursor(self.enableWrap) end)
 	
 	for k, v in util.ripairs(self.children) do
 		if v.location then q(v.calcSizeIFN, v, size) end
@@ -226,17 +246,20 @@ function Component:draw(hbr)
 end
 function Component.drawIFN(q, self)
 	if not self.parent then return end
-
-	local of = self.context.getFunctions()
-	self.context.setFunction("onclick", self.handlers.onclick)
-	self.context.setFunction("ondrag", self.handlers.ondrag)
-	self.context.setFunction("onrelease", self.handlers.onrelease)
 	
-	local obg, ofg = self.context.getColors()
-	self.context.setColorsRaw(self.color or obg, self.textColor or ofg)
+	if not self.dockcontext then return end
+
+	local of = self.dockcontext.getFunctions()
+	self.dockcontext.setFunction("onclick", self.handlers.onclick)
+	self.dockcontext.setFunction("ondrag", self.handlers.ondrag)
+	self.dockcontext.setFunction("onrelease", self.handlers.onrelease)
+	
+	local dbg, dfg = self.context.getColors()
+	local obg, ofg = self.dockcontext.getColors()
+	self.dockcontext.setColorsRaw(self.color or obg, self.textColor or ofg)
 	q(function()
-		self.context.setColorsRaw(obg, ofg)
-		self.context.setFunctions(of)
+		self.dockcontext.setColorsRaw(obg, ofg)
+		self.dockcontext.setFunctions(of)
 	end)
 	for k, v in util.ripairs(self.children) do
 		if not v.sizePosGroup then q(v.drawIFN, v) end

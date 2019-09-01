@@ -52,22 +52,17 @@ local function internalSizeProc(self, size, f)
 end
 
 function Label.calcSizeIFN(q, self, size)
-	size:fixCursor()
+	Component.calcSizeIFN(q, self, size)
+	size = self.spg
 	
-	self.context = self.parent.context
 	self.size = size:cloneAll()
-	
 	internalSizeProc(self, size)
-	
-	for k, v in pairs(self.children) do
-		q(v.calcSizeIFN, v, size)
-	end
 end
 function Label.drawIFN(q, self)
 	Component.drawIFN(q, self)
 	
 	local size = self.size:cloneAll()
 	internalSizeProc(self, size, function(char)
-		self.context.drawPixel(size.position.x, size.position.y, nil, (char~="\t" and char) or " ")
+		self.dockcontext.drawPixel(size.position.x, size.position.y, nil, (char~="\t" and char) or " ")
 	end)
 end

@@ -12,14 +12,15 @@ local SizePosGroup = ribbon.require("class/sizeposgroup").SizePosGroup
 local BufferedComponent = ribbon.require("component/bufferedcomponent").BufferedComponent
 local Component = ribbon.require("component/component").Component
 
-local basec = ...
+local basecomponent = ...
 local BaseComponent = {}
-basec.BaseComponent = BaseComponent
+basecomponent.BaseComponent = BaseComponent
 
 BaseComponent.cparents = {Component}
 function BaseComponent:__call(ctx, es)
 	Component.__call(self)
 	self.context = ctx
+	self.childcontext = ctx
 	self.eventSystem = process
 	self.defaultComponent = class.new(BufferedComponent, self):attribute(
 		"background-color", 0, 
@@ -43,13 +44,14 @@ function BaseComponent:update()
 	return doRedraw
 end
 
-function BaseComponent:ezDraw()
+function BaseComponent:render()
 	self:update()
-	self.defaultComponent:calcSize(class.new(SizePosGroup, class.new(Size, self.context.width, self.context.height)))
+	self.spg = class.new(SizePosGroup, class.new(Size, self.context.width, self.context.height))
+	self.defaultComponent:calcSize(self.spg)
 	self.defaultComponent:draw()
 end
 
-function BaseComponent.execute(func)
+function basecomponent.execute(func)
 	local cctx = {}
 	local ok, err = pcall(func, function(display)
 		display = display or displayapi.getDefaultDisplayID()

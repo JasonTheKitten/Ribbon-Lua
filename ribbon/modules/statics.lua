@@ -1,5 +1,6 @@
 --Thank you, OC, for key codes and colors
 --TODO: Finish
+--TODO: Move code for hex into here; place code for ABCs here
 local statics = ...
 
 local mstatics = {}
@@ -49,9 +50,8 @@ end
 
 mstatics.colors = colors
 mstatics.colours = colors
-
-statics.COLORS = mstatics.colors
-statics.COLOURS = mstatics.colors
+mstatics.COLORS = colors
+mstatics.COLOURS = colors
 
 local keys = { 
 	["F11"] = 0x57,
@@ -72,8 +72,6 @@ local keys = {
 	["rctrl"] = 0x9D,
 	["lalt"] = 0x38,
 	["ralt"] = 0xB8,
-	
-	
 } --TODO: alot more keys
 local function putRow(code, letters)
 	for i=1, #letters do
