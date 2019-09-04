@@ -21,38 +21,43 @@ Component.cparents = {class.Class}
 function Component:__call(parent)
 	if parent then
 		class.checkType(parent, Component, 3, "Component")
-		self:setParent(parent)
 	end
 	
 	self.children = {}
 	self.attributes = {}
 	self.handlers = {}
+	self.triggers = {}
 	self.eventSystem = process.createEventSystem()
 	
 	self.attributes["enabled"] = true
 	
 	local function regH(t, enableRequired)
+		self.triggers["on"..t] = function(d, e)
+			local e = util.copy(d)
+			e.element = self
+			
+			local clicked = {}
+			local pel = self
+			repeat
+				clicked[pel] = true
+				pel = pel.parent
+			until not pel.parent
+			
+			for k, v in pairs(pel:query()) do
+				if clicked[v] then
+					v.handlers["on"..t](d, e)
+				else
+					v.handlers["onexternal"..t](d, e)
+				end
+			end
+		end
         self.handlers["on"..t] = function(d, e)
-    		self.eventSystem.fireEvent(t, d)
+			self.eventSystem.fireEvent(t, d)
     		if self.attributes["on"..t] and (not enableRequired or self.attributes.enabled) then self.attributes["on"..t](d, self) end
-    		if self.parent and self.parent.handlers["on"..t] then
-    			self.parent.handlers["on"..t](d, self)
-    		end
-    		for k, v in util.ripairs(self.children) do
-    			if not rawequal(v, e) and v.handlers["onexternal"..t] then
-    				v.handlers["onexternal"..t](d)
-    			end
-    		end
     	end
     	self.handlers["onexternal"..t] = function(d)
-    		--TODO: Handle arg "d" better
     		self.eventSystem.fireEvent("external_"..t, d)
     		if self.attributes["onexternal"..t] then self.attributes["onexternal"..t](d, self) end
-    		for k, v in util.ripairs(self.children) do
-    			if v.handlers["onexternal"..t] then
-    				v.handlers["onexternal"..t](d)
-    			end
-    		end
     	end
 	end
 	regH("click", true)
@@ -66,24 +71,27 @@ function Component:__call(parent)
 		end
 	end
 	
-	local function setActiveEvent(n, e)
+	local function setSelectedEvent(n, e)
 		if e.button == 1 and self.attributes["enabled"] then
-            self:attribute("hover", true)
+            self:attribute("selected", true)
             self:fireUpdateEvent()
         end
 	end
-	local function setUnhoverEvent(n, e)
+	local function setUnselectedEvent(n, e)
 		if e.button == 1 and self.attributes["enabled"] then
-            self:attribute("hover", false)
+            self:attribute("selected", false)
             self:fireUpdateEvent()
         end
 	end
 	
-	self:addEventListener("click", setActiveEvent)
-	self:addEventListener("external_click", setUnhoverEvent)
-	self:addEventListener("drag", setActiveEvent)
-	self:addEventListener("release", setUnhoverEvent)
-	self:addEventListener("external_drag", setUnhoverEvent)
+	self:addEventListener("click", setSelectedEvent)
+	self:addEventListener("external_click", setUnselectedEvent)
+	self:addEventListener("drag", setSelectedEvent)
+	self:addEventListener("external_drag", setUnselectedEvent)
+	self:addEventListener("release", setUnselectedEvent)
+	self:addEventListener("external_release", setUnselectedEvent)
+	
+	if parent then self:setParent(parent) end
 end
 
 function Component:delete()
@@ -135,6 +143,7 @@ function Component:attribute(...)
 end
 function Component:processAttributes(updated)
 	self.location = self.attributes["location"]
+	self.depth = self.attributes["depth"]
 	if updated["parent"] then
 	   self:setParent(self.attributes["parent"])
 	end
@@ -144,15 +153,11 @@ function Component:processAttributes(updated)
 			v:setParent(self)
 		end
 	end
-	if updated["background-color"] or updated["text-color"] 
-        or updated["hover-background-color"] or updated["hover-text-color"]
-		or updated["hover"] then
-        
-        self.color = (self.attributes.hover and self.attributes["hover-background-color"]) or 
-            self.attributes["background-color"]
-        self.textColor = (self.attributes.hover and self.attributes["hover-text-color"]) or 
-            self.attributes["text-color"]
-    end
+	self.color = (self.attributes.selected and self.attributes["selected-background-color"]) or 
+		self.attributes["background-color"]
+	self.textColor = (self.attributes.selected and self.attributes["selected-text-color"]) or 
+		self.attributes["text-color"]
+
 	self:fireUpdateEvent()
 end
 function Component:getAttribute(n)
@@ -181,20 +186,25 @@ end
 function Component:getBaseComponent()
 	return (not self.parent and self) or self.parent:getBaseComponent()
 end
-function Component:getComponentByID(id)
-	local rtn
-	util.runIFN(self.getComponentByID_IFN, self, id, function(v)
-		rtn = v
-	end)
-	return rtn
-end
-function Component.getComponentByID_IFN(q, self, id, s)
-    if self.attributes["id"] == id then
-        s(self)
-    end
-	for k, v in util.ripairs(self.children) do
-        q(v.getComponentByID_IFN, v, id, s)	
+function Component:query(qf)
+	local q, final = {self}, {}
+	while #q>0 do
+		local curi = q[#q]; q[#q] = nil
+		if not qf or qf(curi) then table.insert(final, curi) end
+		for k, v in pairs(curi.children) do
+			table.insert(q, v)
+		end
 	end
+	return final
+end
+function Component:getComponentByID(id)
+	return self:query(function(comp) return comp.attributes["id"] == id end)[1]
+end
+function Component:getComponentsByType(ctype)
+	return self:query(function(comp) return comp:isA(ctype) end)
+end
+function Component:getComponentsByName(name)
+	return self:query(function(comp) return comp.attributes["name"] == name end)
 end
 
 function Component:fireUpdateEvent()
@@ -231,7 +241,9 @@ function Component.calcSizeIFN(q, self, size)
 		)
 		q(function() size.position = oldPos end)
 	end
-	q(function() size:fixCursor(self.enableWrap) end)
+	if not (self.attributes["location"] or self.attributes["dock"]) then
+		q(function() size:fixCursor(self.enableWrap) end)
+	end
 	
 	for k, v in util.ripairs(self.children) do
 		if v.location then q(v.calcSizeIFN, v, size) end
@@ -241,8 +253,8 @@ function Component.calcSizeIFN(q, self, size)
 	end
 end
 
-function Component:draw(hbr)
-	runIFN(self.drawIFN, self, hbr)
+function Component:draw()
+	runIFN(self.drawIFN, self)
 end
 function Component.drawIFN(q, self)
 	if not self.parent then return end
@@ -250,9 +262,9 @@ function Component.drawIFN(q, self)
 	if not self.dockcontext then return end
 
 	local of = self.dockcontext.getFunctions()
-	self.dockcontext.setFunction("onclick", self.handlers.onclick)
-	self.dockcontext.setFunction("ondrag", self.handlers.ondrag)
-	self.dockcontext.setFunction("onrelease", self.handlers.onrelease)
+	self.dockcontext.setFunction("onclick", self.triggers.onclick)
+	self.dockcontext.setFunction("ondrag", self.triggers.ondrag)
+	self.dockcontext.setFunction("onrelease", self.triggers.onrelease)
 	
 	local dbg, dfg = self.context.getColors()
 	local obg, ofg = self.dockcontext.getColors()
@@ -262,6 +274,6 @@ function Component.drawIFN(q, self)
 		self.dockcontext.setFunctions(of)
 	end)
 	for k, v in util.ripairs(self.children) do
-		if not v.sizePosGroup then q(v.drawIFN, v) end
+		q(v.drawIFN, v)
 	end
 end

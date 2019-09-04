@@ -22,66 +22,23 @@ blockcomponent.BlockComponent = BlockComponent
 BlockComponent.cparents = {Component}
 function BlockComponent:__call(parent)
 	if parent then class.checkType(parent, Component, 3, "Component") end
-	
 	Component.__call(self, parent)
 	
 	self.size = class.new(Size, 0, 0)
-	self.autoSize = {}
 end
 
 function BlockComponent:setParent(parent)
 	Component.setParent(self, parent)
 	if parent and parent.context then
-		self.context = sctx.getContext(parent.context, 0, 0, 0, 0)
+		self:setContextInternal()
 	end
-end
-
-function BlockComponent:getSize()
-	return self.size
-end
-function BlockComponent:setSize(size)
-	class.checkType(size, Size, 3, "Size")
-	self.size = size
-	self.useCustomSize = not not size
-end
-
-function BlockComponent:setPreferredSize(size)
-	if size then class.checkType(size, Size, 3, "Size") end
-	self.preferredSize = size
-end
-function BlockComponent:getPreferredSize()
-	return self.preferredSize
-end
-
-function BlockComponent:setMinSize(size)
-	if size then class.checkType(size, Size, 3, "Size") end
-	self.minSize = size
-end
-function BlockComponent:getMinSize()
-	return self.minSize
-end
-
-function BlockComponent:setMaxSize(size)
-	if size then class.checkType(size, Size, 3, "Size") end
-	self.maxSize = size
-end
-function BlockComponent:getMaxSize()
-	return self.maxSize
-end
-
-function BlockComponent:forceSize(size)
-	class.checkType(size, Size, 3, "Size")
-	self:setMinSize(size)
-	self:setMaxSize(size)
-	self:setPreferredSize(size)
-	self:setSize(size)
 end
 
 --IFN functions
 function BlockComponent:setContextInternal()
-	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.parent.childcontext
-	self.context = self.context or sctx.getContext(self.dockcontext, 0, 0, 0, 0)
-	self.context.parent = self.dockcontext
+	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].childcontext) or self.parent.childcontext
+	self.context = self.context or sctx.getContext(self.parent.childcontext, 0, 0, 0, 0)
+	self.context.setParent(self.dockcontext)
 	self.childcontext = self.context
 end
 function BlockComponent.calcSizeIFN(q, self, size)
@@ -116,38 +73,40 @@ function BlockComponent.calcSizeIFN(q, self, size)
 	
 	self.position = size.position:clone()
 	
-	local msize = class.new(
-		SizePosGroup, self.size, nil, 
-		self.maxSize or size.maxSize:clone():subtractLH(self.position.x, self.position.y))
+	local maxsize = self.maxSize or (size.maxSize and size.maxSize:clone():subtractLH(self.position.x, self.position.y)) or nil
+	local msize = class.new(SizePosGroup, self.size, nil, maxsize)
 	
-	for k, v in util.ripairs(self.children) do
-		if v.location then q(v.calcSizeIFN, v, msize) end
-	end
 	q(function()
 		if self.preferredSize then self.size:set(self.size:max(self.preferredSize)) end
 		if self.minSize then self.size:set(self.size:max(self.minSize)) end
 		if self.maxSize then self.size:set(self.size:min(self.maxSize)) end
 		
-		size:add(self.size)
-		
-		size:fixCursor(true)
+		if not (self.attributes["location"] or self.attributes["dock"]) then
+			size:add(self.size)
+			size:fixCursor(true)
+		else
+			--TODO: Alternate logic
+		end
 		
 		self.context.setPosition(self.position.x, self.position.y)
-		self.context.setDimensions(self.size.width, self.size.height) --TODO: This is totally broken
+		self.context.setDimensions(self.size.width, self.size.height)
 	end)
+	for k, v in util.ripairs(self.children) do
+		if v.location then q(v.calcSizeIFN, v, msize) end
+	end
 	for k, v in util.ripairs(self.children) do
 		if not v.location then q(v.calcSizeIFN, v, msize) end
 	end
 end
-function BlockComponent.drawIFN(q, self, hbr)
+function BlockComponent.drawIFN(q, self)
 	if not self.parent then return end
 	
 	local obg, ofg = self.context.getColors()
 	local dbg, dfg = self.parent.context.getColors()
 	local of = self.context.getFunctions()
-	self.context.setFunction("onclick", self.handlers.onclick)
-	self.context.setFunction("ondrag", self.handlers.ondrag)
-	self.context.setFunction("onrelease", self.handlers.onrelease)
+	self.context.setFunction("onclick", self.triggers.onclick)
+	self.context.setFunction("ondrag", self.triggers.ondrag)
+	self.context.setFunction("onrelease", self.triggers.onrelease)
 	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
 	q(function()
@@ -158,7 +117,5 @@ function BlockComponent.drawIFN(q, self, hbr)
 	
 	self.context.clear()
 	
-	for k, v in util.ripairs(self.children) do
-		q(v.drawIFN, v, size)
-	end
+	for k, v in util.ripairs(self.children) do q(v.drawIFN, v) end
 end

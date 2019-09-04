@@ -12,6 +12,7 @@ local bctx = ...
 local function getData(buffer, x, y, l, h)
 	px, py = px or 0, py or 0
 	l, h = l or buffer.width, h or buffer.height
+	local scrollx, scrolly = buffer.scrollx, buffer.scrolly
 	local data = {x=(buffer.x or 0)+px, y=(buffer.y or 0)+py}
 	for y=0, h-1 do 
 		data[y] = {}
@@ -19,13 +20,16 @@ local function getData(buffer, x, y, l, h)
 	end
 	for k, v in ipairs(buffer) do --todo: scroll again
 		if v.x and v.y and v.width and v.height then
-			for y=v.y, v.y+v.height-1 do 
-				data[y] = data[y] or {}
-				for x=v.x, v.x+v.width-1 do 
-					data[y][x] = {
-						v.char or data[y][x][1],
-						v.background or data[y][x][2] or 0,
-						v.foreground or data[y][x][3] or 15,
+			local sy, sx
+			for y=v.y, v.y+v.height-1 do
+				sy = y-scrolly
+				data[sy] = data[sy] or {}
+				for x=v.x, v.x+v.width-1 do
+					sx = x - scrollx
+					data[sy][sx] = {
+						v.char or data[sy][sx][1],
+						v.background or data[sy][sx][2] or 0,
+						v.foreground or data[sy][sx][3] or 15,
 					}
 				end
 			end
@@ -63,14 +67,13 @@ bctx.wrapContext = function(ctx, es)
 		end
 	end
 
-	local buffer = {x=ctx.position.x, y=ctx.position.y, width=ctx.width, height=ctx.height}
+	local buffer = {}
 	local charVisible, contextColor = true, nil
 	local functions = {}
 	
 	ifn.drawPixel = function(q, x, y, color, char, fg)
 		checkInitialized()
 		char = char and charVisible and tostring(char)
-		x = (internals.xinverted and ctx.width-x-1) or x
 		q(ifn.drawFilledRect, x, y, 1, 1, color, char, fg)
 	end
 	ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
@@ -145,6 +148,9 @@ bctx.wrapContext = function(ctx, es)
 		buffer = {}
 	end
 	ctx.getBuffer = function()
+		buffer.x, buffer.y = ctx.position.x, ctx.position.y
+		buffer.width, buffer.height = ctx.width, ctx.height
+		buffer.scrollx, buffer.scrolly = ctx.scroll.x, ctx.scroll.y
 		return buffer
 	end
 	

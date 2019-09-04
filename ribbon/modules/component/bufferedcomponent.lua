@@ -26,15 +26,15 @@ BufferedComponent.__call = BlockComponent.__call
 function BufferedComponent:setParent(parent)
 	Component.setParent(self, parent)
 	if parent and parent.context then
-		self.context = bctx.getContext(parent.context, 0, 0, 0, 0, parent.eventSystem)
+		self:setContextInternal()
 	end
 end
 
 --IFN functions
 function BufferedComponent:setContextInternal()
 	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.parent.childcontext
-	self.context = self.context or bctx.getContext(self.dockcontext, 0, 0, 0, 0, self.parent.eventSystem)
-	self.context.parent = self.dockcontext
+	self.context = self.context or bctx.getContext(self.parent.context, 0, 0, 0, 0, self.parent.eventSystem)
+	self.context.setParent(self.dockcontext)
 	self.childcontext = self.context
 end
 function BufferedComponent.drawIFN(q, self, hbr)

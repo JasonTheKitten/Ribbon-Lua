@@ -52,13 +52,16 @@ local function internalSizeProc(self, size, f)
 end
 
 function Label.calcSizeIFN(q, self, size)
+	if not self.parent then return end
+
 	Component.calcSizeIFN(q, self, size)
-	size = self.spg
 	
-	self.size = size:cloneAll()
-	internalSizeProc(self, size)
+	self.size = self.spg:cloneAll()
+	internalSizeProc(self, self.spg)
 end
 function Label.drawIFN(q, self)
+	if not self.parent then return end
+	
 	Component.drawIFN(q, self)
 	
 	local size = self.size:cloneAll()

@@ -1,4 +1,4 @@
---TODO: MOUNTING/LINKING/DISKS/FREESPACE/ETC
+--TODO: MOUNTING/LINKING/DISKS/FREESPACE/READONLY/ETC
 local ribbon = require()
 local environment = ribbon.require "environment"
 

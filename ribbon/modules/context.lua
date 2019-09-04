@@ -1,9 +1,15 @@
+--TODO: Pixel Info and Pixel Functions
+--Pixels can be given extra info
+--A function can be assigned to a context to process this info
+--Additionally, backgrounds, foregrounds, and text can be passed as functions
+
 local ribbon = require()
 
-local environment = ribbon.require "environment"
-local ctxu = ribbon.require "contextutils"
 local bctx = ribbon.require "bufferedcontext"
+local ctxu = ribbon.require "contextutils"
+local debugger = ribbon.require "debugger"
 local displayapi = ribbon.require "display"
+local environment = ribbon.require "environment"
 local util = ribbon.require "util"
 
 local natives = environment.getNatives()
@@ -32,10 +38,8 @@ local function checkLH(l, h)
 	if not l or not h then error("Arguments missing", 3) end
 	return l<1 or h<1
 end
-local function cXY(ctx, x, y, l)
-	x, y = x-ctx.scroll.x, y-ctx.scroll.y
-	x = (ctx.INTERNALS.xinverted and ctx.width-x-(l or 1)) or x
-	return x, y
+local function cXY(ctx, x, y)
+	return x-ctx.scroll.x, y-ctx.scroll.y
 end
 local runIFN = util.runIFN
 
@@ -61,7 +65,6 @@ context.getContext = function(parent, x, y, l, h)
 		enableColor = true,
 		useParentwidth = not l,
 		useParentheight = not h,
-		xinverted = false,
 		CONFIG = {}
 	}
 	ctx.INTERNALS = internals
@@ -69,6 +72,12 @@ context.getContext = function(parent, x, y, l, h)
 	local pinternals = (parent and parent.INTERNALS) or {}
 	local ifn, pifn = {}, pinternals.IFN or {}
 	internals.IFN = ifn
+	
+	ctx.setParent = function(parent)
+		ctx.parent = parent
+		pinternals = (parent and parent.INTERNALS) or {}
+		pifn = pinternals.IFN or {}
+	end
 	
 	ctx.startDraw = function()
 		checkCanStartDraw(internals)
@@ -110,14 +119,10 @@ context.getContext = function(parent, x, y, l, h)
 		checkInitialized(internals)
 		color = color or internals.CONFIG.defaultBackgroundColor
 		fg = fg or internals.CONFIG.defaultTextColor
-		if internals.xtinverted then
-			text = ctxu.reverseTextX(text)
-		end
 		text = text:sub(1, ctx.width-x)
 		if #text==0 then return end
 		if pifn.drawText and internals.optimizationsEnabled then
-			x, y = cXY(ctx, x, y, ctxu.getLineLength(text))
-			if internals.xinverted then text = ctxu.reverseTextX(text) end
+			x, y = cXY(ctx, x, y)
 			q(pifn.drawText, ctx.position.x+x, ctx.position.y+y, text, color, fg)
 		else
 			local ox, oy = 0,0
@@ -145,8 +150,12 @@ context.getContext = function(parent, x, y, l, h)
 		color = color or internals.CONFIG.defaultBackgroundColor
 		fg = fg or internals.CONFIG.defaultTextColor
 		if pifn.drawFilledRect and internals.optimizationsEnabled then
-			x, y = cXY(ctx, x, y, l)
-			q(pifn.drawFilledRect, ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
+			x, y = cXY(ctx, x, y)
+			if x<ctx.width and y<ctx.height then
+				l = (l+x < ctx.width and l) or ctx.width-x
+				h = (h+y < ctx.height and h) or ctx.height-y
+				q(pifn.drawFilledRect, ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
+			end
 		else
 			for ox=0, l-1 do
 				for oy=0, h-1 do
@@ -197,19 +206,9 @@ context.getContext = function(parent, x, y, l, h)
 	end
 	ifn.blit = function(q, x, y, str, bstr, fstr)
 		checkInitialized(internals)
-		if internals.xtinverted then
-			str = ctxu.reverseTextX(str)
-			bstr = ctxu.reverseTextX(bstr)
-			fstr = ctxu.reverseTextX(fstr)
-		end
 		if pifn.blit and ctx.optimizationsEnabled then
 			if y>ctx.height then return end
-			x, y = cXY(ctx, x, y, #str)
-			if internals.xinverted then
-				str = ctxu.reverseTextX(str)
-				bstr = ctxu.reverseTextX(bstr)
-				fstr = ctxu.reverseTextX(fstr)
-			end
+			x, y = cXY(ctx, x, y)
 			str = str:sub(1, ctx.width-x)
 			bstr = bstr:sub(1, ctx.width-x)
 			fstr = fstr:sub(1, ctx.width-x)
@@ -347,22 +346,6 @@ context.getContext = function(parent, x, y, l, h)
 		if t then return ctx.scroll[t] end
 		return {ctx.scroll.x, ctx.scroll.y}
 	end
-
-	ctx.invertX = function() internals.xinverted = not internals.xinverted end
-	ctx.setInvertedX = function(v) internals.xinverted = v end
-	ctx.getInvertedX = function() return internals.xinverted end
-	
-	ctx.invertY = function() error("ENOSUP", 2) end
-	ctx.setInvertedY = function(v) error("ENOSUP", 2) end
-	ctx.getInvertedY = function() return false end
-
-	ctx.invertTextX = function() internals.xtinverted = not internals.xtinverted end
-	ctx.setTextInvertedX = function(v) internals.xtinverted = v end
-	ctx.getTextInvertedX = function() return internals.xtinverted end
-	
-	ctx.invertTextY = function() error("ENOSUP", 2) end
-	ctx.setTextInvertedY = function(v) error("ENOSUP", 2) end
-	ctx.getTextInvertedY = function() return false end
 	
 	return ctx
 end
@@ -414,17 +397,7 @@ context.getNativeContext = function(display)
 				if term.getSimulated() then return end
 				
 				x, y = x-ctx.scroll.x, y-ctx.scroll.y
-				if internals.xtinverted then
-					str = ctxu.reverseTextX(str)
-					bstr = ctxu.reverseTextX(bstr)
-					fstr = ctxu.reverseTextX(fstr)
-				end
-				if internals.xinverted then
-					str = ctxu.reverseTextX(str)
-					bstr = ctxu.reverseTextX(bstr)
-					fstr = ctxu.reverseTextX(fstr)
-					x=ctx.width-x-#str
-				end
+
 				term.setCursorPos(x+1, y+1)
 				if ctx.INTERNALS.isColor then
 					term.blit(str, fstr:gsub(" ", "0"), bstr:gsub(" ", "f"))
@@ -440,10 +413,11 @@ context.getNativeContext = function(display)
 				
 				for y=0, #data do
 					local by = {"", "", ""}
-					for x=0, #data[y] do
-						by[1] = by[1]..(data[y][x][1] or " ")
-						by[2] = by[2]..(hex[data[y][x][2]] or "0")
-						by[3] = by[3]..(hex[data[y][x][3]] or "f")
+					for x=0, #(data[y] or {}) do
+						local pixel = (data[y] or {})[x] or {}
+						by[1] = by[1]..(pixel[1] or " ")
+						by[2] = by[2]..(hex[pixel[2]] or "0")
+						by[3] = by[3]..(hex[pixel[3]] or "f")
 					end
 					buffer[y] = by
 				end
@@ -473,8 +447,6 @@ context.getNativeContext = function(display)
 			fg = fg or internals.CONFIG.defaultTextColor
 			
 			x, y = x-ctx.scroll.x, y-ctx.scroll.y
-			
-			x = (internals.xinverted and ctx.width-x-1) or x
 			
 			if internals.isColor then
 				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor or 15))
@@ -532,7 +504,13 @@ context.getNativeContext = function(display)
 		if display==displayapi.term_current then addr = gpu.getScreen() end
 		local term = {
 			getSimulated = function() return not gpu or not gpu.getScreen() end,
-			getSize = function() if gpu then return gpu.getViewport() else return 1, 1 end end,
+			getSize = function()
+				if gpu then
+					local ok, l, h = pcall(gpu.getViewport)
+					if ok and l and h then return l, h end
+				end
+				return 0, 0
+			end,
 			setBackground = function(color)
 				color = color or 15
 				if color>15 then error("Extended pallete coming at a later time", 3) end
@@ -556,6 +534,7 @@ context.getNativeContext = function(display)
 				local res = {pcall(function()
 					return gpu[k](table.unpack(args))
 				end)}
+				if not res[1] then debugger.log(res[2]) end
 				if res[1] then return table.unpack(res, 2) end
 			end
 		end})
@@ -569,8 +548,6 @@ context.getNativeContext = function(display)
 			fg = fg or internals.CONFIG.defaultTextColor
 			
 			x, y = x-ctx.scroll.x, y-ctx.scroll.y
-			
-			x = (internals.xinverted and ctx.width-x-1) or x
 			
 			if internals.isColor then
 				term.setBackground(color or internals.CONFIG.defaultBackgroundColor or 15)
@@ -590,9 +567,6 @@ context.getNativeContext = function(display)
 			
 			x, y = x-ctx.scroll.x, y-ctx.scroll.y
 			
-			x = (internals.xinverted and ctx.width-x-l) or x
-			
-			
 			if internals.isColor then
 				term.setBackground(color or internals.CONFIG.defaultBackgroundColor)
 				term.setForeground(fg or internals.CONFIG.defaultTextColor)
@@ -604,17 +578,6 @@ context.getNativeContext = function(display)
 			if term.getSimulated() then return end
 			
 			x, y = x-ctx.scroll.x, y-ctx.scroll.y
-			if internals.xtinverted then
-				str = ctxu.reverseTextX(str)
-				bstr = ctxu.reverseTextX(bstr)
-				fstr = ctxu.reverseTextX(fstr)
-			end
-			if internals.xinverted then
-				str = ctxu.reverseTextX(str)
-				bstr = ctxu.reverseTextX(bstr)
-				fstr = ctxu.reverseTextX(fstr)
-				x=ctx.width-x-#str
-			end
 			
 			local builtstr, bcol, fcol = "", "", ""
 			local ni = 0
@@ -773,5 +736,6 @@ context.getNativeContext = function(display)
 		end
 	end
 	ctx.update()
+	
 	return ctx
 end

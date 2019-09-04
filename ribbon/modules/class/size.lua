@@ -8,7 +8,8 @@ size.Size = Size
 
 Size.cparents = {class.Class}
 function Size:__call(w, h)
-	self.width, self.height = math.abs(w), math.abs(h)
+	if not w then error("TE", 3) end
+	self.width, self.height = math.abs(w), math.abs(h)--math.abs(0 or w), math.abs(0 or h)
 end
 
 function Size:subtractLH(l, h)

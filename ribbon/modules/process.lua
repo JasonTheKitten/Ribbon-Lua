@@ -54,7 +54,7 @@ process.execute = function(f, ...)
 		catchEvents = function()
 			eq = {}
 			natives.os.queueEvent("q_bottom", cid)
-			local tid = natives.os.startTimer(.3) --.05
+			local tid = natives.os.startTimer(.1) --.05
 			local e = {coroutine.yield()}
 			while not ((e[1]=="q_bottom" and e[2]==cid) or (e[1] == "timer" and e[2] == tid)) do
 				if e[1] == "terminate" then terminate() end
@@ -66,11 +66,11 @@ process.execute = function(f, ...)
 	elseif isOC then
 		catchEvents = function()
 			eq = {}
-			local e = {natives.require("computer").pullSignal(0)}
+			local e = {natives.require("computer").pullSignal(.1)}
 			while (#e>0) do
 				if e[1] == "interrupted" then terminate() end
 				table.insert(eq, 1, e)
-				e = {natives.require("computer").pullSignal(0)}
+				e = {natives.require("computer").pullSignal(.3)}
 			end
 		end
 	end

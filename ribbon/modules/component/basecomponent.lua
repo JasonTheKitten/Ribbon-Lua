@@ -46,7 +46,8 @@ end
 
 function BaseComponent:render()
 	self:update()
-	self.spg = class.new(SizePosGroup, class.new(Size, self.context.width, self.context.height))
+	local size = class.new(Size, self.context.width, self.context.height)
+	self.spg = class.new(SizePosGroup, size, nil, size)
 	self.defaultComponent:calcSize(self.spg)
 	self.defaultComponent:draw()
 end
