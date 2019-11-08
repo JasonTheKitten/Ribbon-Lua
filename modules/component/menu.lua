@@ -1,3 +1,5 @@
+--TODO: Fix handling of selected-*-color
+
 local ribbon = require()
 
 local class = ribbon.require "class"
@@ -68,5 +70,8 @@ function Menu:processAttributes(updated)
 			
 			class.new(Break, self)
 		end
+	end
+	if updated["selected-text-color"] or updated["selected-background-color"] then
+        
 	end
 end

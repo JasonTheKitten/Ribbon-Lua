@@ -12,6 +12,7 @@ button.Button = Button
 
 Button.cparents = {BlockComponent}
 function Button:__call(parent, text)
+    if parent then class.checkType(parent, Component, 2, "Component") end
 	BlockComponent.__call(self, parent)
 	self.label = class.new(Label, self, text)
 end

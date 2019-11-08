@@ -1,3 +1,7 @@
+--TODO: Support shared styles
+--TODO: Keyboard selection
+--TODO: Copy/Paste?
+
 local ribbon = require()
 
 local class = ribbon.require "class"
@@ -24,17 +28,21 @@ function Component:__call(parent)
 	end
 	
 	self.children = {}
-	self.attributes = {}
 	self.handlers = {}
 	self.triggers = {}
 	self.eventSystem = process.createEventSystem()
 	
-	self.attributes["enabled"] = true
+	self.attributes = {
+	    ["enabled"] = true,
+	    ["enable-wrap"] = true,
+	    ["enable-child-wrap"] = true
+	}
+	self.enableChildWrap = true
 	
 	local function regH(t, enableRequired)
-		self.triggers["on"..t] = function(d, e)
-			local e = util.copy(d)
-			e.element = self
+		self.triggers["on"..t] = function(e, d)
+			local d = util.copy(d)
+			d.element = self
 			
 			local clicked = {}
 			local pel = self
@@ -45,17 +53,17 @@ function Component:__call(parent)
 			
 			for k, v in pairs(pel:query()) do
 				if clicked[v] then
-					v.handlers["on"..t](d, e)
+					v.handlers["on"..t](e, d)
 				else
-					v.handlers["onexternal"..t](d, e)
+					v.handlers["onexternal"..t](e, d)
 				end
 			end
 		end
-        self.handlers["on"..t] = function(d, e)
+        self.handlers["on"..t] = function(e, d)
 			self.eventSystem.fireEvent(t, d)
     		if self.attributes["on"..t] and (not enableRequired or self.attributes.enabled) then self.attributes["on"..t](d, self) end
     	end
-    	self.handlers["onexternal"..t] = function(d)
+    	self.handlers["onexternal"..t] = function(e, d)
     		self.eventSystem.fireEvent("external_"..t, d)
     		if self.attributes["onexternal"..t] then self.attributes["onexternal"..t](d, self) end
     	end
@@ -211,6 +219,38 @@ function Component:fireUpdateEvent()
     self.handlers.onupdate()
 end
 
+function Component:setContextInternal()
+    self.context = self.parent.childcontext
+	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.context
+	self.childcontext = self.dockcontext
+end
+function Component:queueChildrenCalcSize(q, size)
+    for k, v in util.ripairs(self.children) do
+		if v.location then q(v.calcSizeIFN, v, size) end
+	end
+	for k, v in util.ripairs(self.children) do
+		if not v.location then q(v.calcSizeIFN, v, size) end
+	end
+end
+function Component:mCalcSize(q, size)
+    self.enableWrap = self.parent.enableChildWrap and self.attributes["enable-wrap"]
+    self.enableChildWrap = self.parent.enableChildWrap and self.attributes["enable-child-wrap"]
+    
+    if self.location then
+		local l, oldPos = self.location, size.position
+		size.position = class.new(Position, 
+			ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], 0, l[5], 0, l[6])
+		)
+		q(function() size.position = oldPos end)
+	end
+	self.position = size.position:clone()
+	
+    if not (self.attributes["location"] or self.attributes["dock"]) then
+		q(function() size:fixCursor(self.enableWrap) end)
+	end
+	
+	self:queueChildrenCalcSize(q, size)
+end
 function Component:calcSize(size)
 	if size then
 		class.checkType(size, SizePosGroup, 3, "SizePosGroup", Size)
@@ -230,27 +270,8 @@ function Component.calcSizeIFN(q, self, size)
 	end
 	self.spg = size
 	
-	self.context = self.parent.childcontext
-	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.context
-	self.childcontext = self.dockcontext
-	
-	if self.location then
-		local l, oldPos = self.location, size.position
-		size.position = class.new(Position, 
-			ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], 0, l[5], 0, l[6])
-		)
-		q(function() size.position = oldPos end)
-	end
-	if not (self.attributes["location"] or self.attributes["dock"]) then
-		q(function() size:fixCursor(self.enableWrap) end)
-	end
-	
-	for k, v in util.ripairs(self.children) do
-		if v.location then q(v.calcSizeIFN, v, size) end
-	end
-	for k, v in util.ripairs(self.children) do
-		if not v.location then q(v.calcSizeIFN, v, size) end
-	end
+	self:setContextInternal()
+	self:mCalcSize(q, size)
 end
 
 function Component:draw()

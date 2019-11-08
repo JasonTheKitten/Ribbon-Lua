@@ -63,8 +63,8 @@ context.getContext = function(parent, x, y, l, h)
 		isNative = false,
 		optimizationsEnabled = true,
 		enableColor = true,
-		useParentwidth = not l,
-		useParentheight = not h,
+		useParentWidth = not l,
+		useParentHeight = not h,
 		CONFIG = {}
 	}
 	ctx.INTERNALS = internals
@@ -242,7 +242,7 @@ context.getContext = function(parent, x, y, l, h)
 			end
 		end
 		for k, v in util.ripairs(b) do
-			local mx, my = (v.x or 0)+x, (v.y or 0)+y
+			local mx, my = (v.x or 0)+x-b.scrollx, (v.y or 0)+y-b.scrolly
 			local bg, char, fg = 
 				v.background or getPixelInfo(v.x, v.y, "background"), 
 				v.char or getPixelInfo(v.x, v.y, "char"), 
@@ -315,14 +315,14 @@ context.getContext = function(parent, x, y, l, h)
 	end
 	
 	ctx.update = function()
-		ctx.width = (internals.useParentwidth and ctx.parent and ctx.parent.width) or ctx.width
-		ctx.height = (internals.useParentheight and ctx.parent and ctx.parent.height) or ctx.height
+		ctx.width = (internals.useParentWidth and ctx.parent and ctx.parent.width) or ctx.width
+		ctx.height = (internals.useParentHeight and ctx.parent and ctx.parent.height) or ctx.height
 		internals.isColor = pinternals.isColor and internals.enableColor
 	end
 	
 	ctx.setAutoSize = function(w, h)
-		if w~=nil then ctx.useParentwidth = w end
-		if h~=nil then ctx.useParentheight = h end
+		if w~=nil then ctx.useParentWidth = w end
+		if h~=nil then ctx.useParentHeight = h end
 	end
 	ctx.setDimensions = function(l, h)
 		ctx.width = math.abs(l)

@@ -7,9 +7,9 @@
 
 local ribbon = require()
 
+local debugger = ribbon.require "debugger"
 local environment = ribbon.require "environment"
 local util = ribbon.require "util"
-local debugger = ribbon.require "debugger"
 
 local natives = environment.getNatives()
 
@@ -123,7 +123,8 @@ process.createEventSystem = function()
 				local ok, err = pcall(v, ...)
 				if not ok then debugger.error(err) end
 			end)
-			coroutine.resume(c, e, d)
+			local ok, err = coroutine.resume(c, e, d)
+			if not ok then debugger.log(err) end
 			if coroutine.status(c) ~= "dead" then
 				debugger.warn("Interrupt yielded before completion; Execution will not finish.")
 			end

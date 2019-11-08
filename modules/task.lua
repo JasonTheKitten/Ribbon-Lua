@@ -6,9 +6,12 @@ task.createTaskSystem = function()
     local tasko, tasks, taskFuncs, id, curID, running = {}, {}, {}, -1, 0, true
     
     tasko.register = function(f)
-        while taskFuncs[id] do id=(id+1)%math.huge end
+        while taskFuncs[id] do
+			id=(id+1)
+			if id >= math.huge then id = 0 end
+		end
         taskFuncs[id] = f
-        task[id] = coroutine.create(f)
+        tasks[id] = coroutine.create(f)
         return id
     end
     tasko.unregister = function(id)
@@ -42,7 +45,7 @@ task.createTaskSystem = function()
     end
     tasko.continueAll = function(e)
         for k, v in pairs(tasks) do
-            local ok, err = coroutine.resume(tasks[curID])
+            local ok, err = coroutine.resume(v)
             if e and not ok then e(err, -1) end
         end
     end

@@ -15,16 +15,16 @@ local Label = {}
 label.Label = Label
 
 Label.cparents = {Component}
-function Label:__call(parent, text, enableWrap)
+function Label:__call(parent, text)
 	if parent then class.checkType(parent, Component, 3, "Component") end
 	Component.__call(self, parent, text)
 	
-	self.text = text
-	self.enableWrap = true--enableWrap or false
+	self:attribute("text", text, "enable-wrap", true)
 end
 
 --IFN functions
 local function internalSizeProc(self, size, f)
+	self.text = self.attributes["text"] or ""
 	local text, lastSpaceBroke = self.text, false
 	size:fixCursor(self.enableWrap)
 	for i=1, #text do
@@ -34,8 +34,8 @@ local function internalSizeProc(self, size, f)
 			size:incLine(self.enableWrap)
 		elseif char == " " then
 			if not lastSpaceBroke then
-				local done = (text:sub(2, #text).." "):find(" ")
-				local needed = done-size.size.width
+				local done = (text:sub(i+1, #text).." "):find(" ")
+				local needed = size.position.x+done-size.size.width
 				if needed >= 0 and not size:expandWidth(needed) then
 					lastSpaceBroke = true
 					size:incLine(self.enableWrap)
@@ -52,12 +52,14 @@ local function internalSizeProc(self, size, f)
 end
 
 function Label.calcSizeIFN(q, self, size)
+	local clock = os.clock()
 	if not self.parent then return end
 
 	Component.calcSizeIFN(q, self, size)
 	
 	self.size = self.spg:cloneAll()
 	internalSizeProc(self, self.spg)
+	debugger.log(os.clock()-clock)
 end
 function Label.drawIFN(q, self)
 	if not self.parent then return end

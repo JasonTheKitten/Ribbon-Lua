@@ -160,6 +160,8 @@ bctx.wrapContext = function(ctx, es)
 	end
 	
 	ctx.getData = function(px, py, l, h)
+		buffer.scrollx = self.scroll.x-ctx
+		buffer.scrolly = self.scroll.y
 		return getData(buffer)
 	end
 	
@@ -169,7 +171,7 @@ bctx.wrapContext = function(ctx, es)
     		local y = e.y-ctx.position.y-ctx.scroll.y
     		if x>=0 and x<ctx.width and y>=0 and y<ctx.height then
 				local f = ctx.getPixelInfo(x, y, t, true)
-				if f then f({
+				if f then f(n, {
 					x = x, y = y,
 					button = e.button,
 					display = e.display,

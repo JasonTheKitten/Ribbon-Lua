@@ -34,24 +34,18 @@ function BlockComponent:setParent(parent)
 	end
 end
 
---IFN functions
-function BlockComponent:setContextInternal()
-	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].childcontext) or self.parent.childcontext
-	self.context = self.context or sctx.getContext(self.parent.childcontext, 0, 0, 0, 0)
-	self.context.setParent(self.dockcontext)
-	self.childcontext = self.context
+--Scroll
+function BlockComponent:scroll(n)
+	self.context.adjustScroll(0, n)
+	self:fireUpdateEvent()
 end
-function BlockComponent.calcSizeIFN(q, self, size)
-	if not self.parent then return end
-	
-	if self.attributes["dock"] then
-		size = self.attributes["dock"].spg
-	end
-	self.spg = size
-	
-	self:setContextInternal()
-	
-	self.size = (self.preferredSize and self.preferredSize:clone()) or class.new(Size, 0, 0)
+
+--IFN functions
+function BlockComponent:mCalcSize(q, size)
+    self.enableWrap = self.parent.enableChildWrap and self.attributes["enable-wrap"]
+    self.enableChildWrap = self.attributes["enable-child-wrap"]
+    
+    self.size = (self.preferredSize and self.preferredSize:clone()) or class.new(Size, 0, 0)
 	if self.attributes["width"] then
 		if not self.maxSize then self.maxSize = class.new(Size, 0, 1/0) end
 		self.size.width = size.size.width*(self.attributes.width[1] or 0) + (self.attributes.width[2] or 0)
@@ -70,20 +64,18 @@ function BlockComponent.calcSizeIFN(q, self, size)
 		)
 		q(function() size.position = oldPos end)
 	end
-	
 	self.position = size.position:clone()
-	
+    
 	local maxsize = self.maxSize or (size.maxSize and size.maxSize:clone():subtractLH(self.position.x, self.position.y)) or nil
 	local msize = class.new(SizePosGroup, self.size, nil, maxsize)
 	
 	q(function()
-		if self.preferredSize then self.size:set(self.size:max(self.preferredSize)) end
 		if self.minSize then self.size:set(self.size:max(self.minSize)) end
 		if self.maxSize then self.size:set(self.size:min(self.maxSize)) end
 		
 		if not (self.attributes["location"] or self.attributes["dock"]) then
 			size:add(self.size)
-			size:fixCursor(true)
+			size:fixCursor(self.enableWrap)
 		else
 			--TODO: Alternate logic
 		end
@@ -91,12 +83,13 @@ function BlockComponent.calcSizeIFN(q, self, size)
 		self.context.setPosition(self.position.x, self.position.y)
 		self.context.setDimensions(self.size.width, self.size.height)
 	end)
-	for k, v in util.ripairs(self.children) do
-		if v.location then q(v.calcSizeIFN, v, msize) end
-	end
-	for k, v in util.ripairs(self.children) do
-		if not v.location then q(v.calcSizeIFN, v, msize) end
-	end
+	self:queueChildrenCalcSize(q, msize)
+end
+function BlockComponent:setContextInternal()
+	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].childcontext) or self.parent.childcontext
+	self.context = self.context or sctx.getContext(self.parent.childcontext, 0, 0, 0, 0)
+	self.context.setParent(self.dockcontext)
+	self.childcontext = self.context
 end
 function BlockComponent.drawIFN(q, self)
 	if not self.parent then return end

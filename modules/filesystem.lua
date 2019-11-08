@@ -16,6 +16,8 @@ filesystem.isDir = (isOC and nfs.isDirectory) or (isCC and nfs.isDir)
 filesystem.isFolder = filesystem.isDir
 filesystem.isFile = function(f) return filesystem.exists(f) and not filesystem.isDir(f) end
 
+--TODO: makeDir
+
 filesystem.combine = function(a, b)
     if isCC then
 		local res = nfs.combine(a, b)
@@ -68,7 +70,7 @@ local handleMethods = {"close", "flush", "lines", "read", "setvbuf", "seek", "wr
 filesystem.open = function(file, mode)
 	if not mode then error("filemode not set", 2) end
     local mio = io.open("/"..file, mode)
-	if not mio then return false end
+	if not mio then error("could not open file", 2) end
     local handle = {}
     for k, v in pairs(handleMethods) do 
 		local fname=v

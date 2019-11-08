@@ -4,7 +4,6 @@ local class = ribbon.require "class"
 local bctx = ribbon.require "bufferedcontext"
 local ctxu = ribbon.require "contextutils"
 local debugger = ribbon.require "debugger"
-local process = ribbon.require "process"
 local util = ribbon.require "util"
 
 local Size = ribbon.require("class/size").Size

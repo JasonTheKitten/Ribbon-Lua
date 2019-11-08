@@ -1,4 +1,5 @@
 --Thank you, OC, for key codes and colors
+--TODO: Use key APIs instead
 --TODO: Finish
 --TODO: Move code for hex into here; place code for ABCs here
 local statics = ...
@@ -40,12 +41,14 @@ colors.lightRed = colors.pink
 colors.darkRed = colors.red
 colors.blue = colors.darkBlue
 
-local copy = {}
-for k, v in pairs(colors) do
-	copy[k:upper()] = v
-end
-for k, v in pairs(copy) do
-	colors[k] = v
+do
+	local copy = {}
+	for k, v in pairs(colors) do
+		copy[k:upper()] = v
+	end
+	for k, v in pairs(copy) do
+		colors[k] = v
+	end
 end
 
 mstatics.colors = colors
@@ -91,13 +94,26 @@ putRowT(0x3B, {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"})
 putRowT(0xCF, {"end", "pagedown", "insert", "delete"})
 
 
-
 for k, v in pairs(keys) do
 	keys[v] = k
 end
 keys.space = keys[" "]
 
+do
+	local copy = {}
+	for k, v in pairs(keys) do
+		if type(k)=="string" then
+			keys[k:upper()] = v
+		end
+	end
+	for k, v in pairs(copy) do
+		keys[k] = v
+	end
+end
+
 mstatics.keys = keys
+mstatics.KEYS = keys
+statics.keys = keys
 statics.KEYS = mstatics.keys
 
 local mouse = {

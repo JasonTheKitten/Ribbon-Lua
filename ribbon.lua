@@ -160,6 +160,7 @@ end
 --Execution environment
 env._ENV = env
 env._VERSION = _VERSION or "Lua 5.2"
+env._G = env
 env.assert = assert
 env.collectgarbage = collectgarbage or function() end
 env.dofile = dofile
