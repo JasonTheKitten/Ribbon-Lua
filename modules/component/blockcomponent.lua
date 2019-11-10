@@ -35,8 +35,12 @@ function BlockComponent:setParent(parent)
 end
 
 --Scroll
-function BlockComponent:scroll(n)
+function BlockComponent:scrollY(n)
 	self.context.adjustScroll(0, n)
+	if self.context.scroll.y>self.scrollableSize.height-self.context.height then
+		self.context.scroll.y=self.scrollableSize.height-self.context.height
+	end
+	if self.context.scroll.y<0 then self.context.scroll.y = 0 end
 	self:fireUpdateEvent()
 end
 
@@ -70,6 +74,7 @@ function BlockComponent:mCalcSize(q, size)
 	local msize = class.new(SizePosGroup, self.size, nil, maxsize)
 	
 	q(function()
+		self.scrollableSize = self.size:clone()
 		if self.minSize then self.size:set(self.size:max(self.minSize)) end
 		if self.maxSize then self.size:set(self.size:min(self.maxSize)) end
 		

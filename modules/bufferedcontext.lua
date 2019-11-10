@@ -71,12 +71,14 @@ bctx.wrapContext = function(ctx, es)
 	local charVisible, contextColor = true, nil
 	local functions = {}
 	
-	ifn.drawPixel = function(q, x, y, color, char, fg)
+	ifn.drawPixel = function(x, y, color, char, fg)
 		checkInitialized()
 		char = char and charVisible and tostring(char)
-		q(ifn.drawFilledRect, x, y, 1, 1, color, char, fg)
+		if x>=0 and y>=0 and x<ctx.width and y<ctx.height then
+			return ifn.drawFilledRect(x, y, 1, 1, color, char, fg)
+		end
 	end
-	ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
+	ifn.drawFilledRect = function(x, y, l, h, color, char, fg)
 		if x>=0 and y>=0 then
 			local pixel = {x=x, y=y, width=l, height=h, functions = {}}
 			pixel.char = char or " "
@@ -160,7 +162,7 @@ bctx.wrapContext = function(ctx, es)
 	end
 	
 	ctx.getData = function(px, py, l, h)
-		buffer.scrollx = self.scroll.x-ctx
+		buffer.scrollx = self.scroll.x
 		buffer.scrolly = self.scroll.y
 		return getData(buffer)
 	end

@@ -91,31 +91,28 @@ context.getContext = function(parent, x, y, l, h)
 	ctx.clear = function(color, char)
 		checkInitialized(internals)
 		char = char and tostring(char) or " "
-		runIFN(ifn.drawFilledRect, 0, 0, ctx.width, ctx.height, color, char)
-		return 0, 0
+		return ifn.drawFilledRect(0, 0, ctx.width, ctx.height, color, char)
 	end
 	
-	ctx.drawPixel = function(x, y, color, char, fg)
-		char = (char and tostring(char)) or ""
-		runIFN(ifn.drawPixel, x, y, color, char, fg)
-		if x+1<ctx.width then return x+1, y else return 0, y+1 end
-	end
-	ifn.drawPixel = function(q, x, y, color, char, fg)
-		checkInitialized(internals)
+	ifn.drawPixel = function(x, y, color, char, fg)
 		x, y = cXY(ctx, x, y)
-		if (x>=0 and (not ctx.width or x<ctx.width)) and (y>=0 and (not ctx.height or y<ctx.height)) then
+		if (not ctx.width or (x>=0 and x<ctx.width)) and 
+			(not ctx.height or (y>=0 and y<ctx.height)) then
+			
+			checkInitialized(internals)
+			
 			color = color or internals.CONFIG.defaultBackgroundColor
 			fg = fg or internals.CONFIG.defaultTextColor
-			q(pifn.drawPixel, ctx.position.x+x, ctx.position.y+y, color, char, fg)
+			return pifn.drawPixel(ctx.position.x+x, ctx.position.y+y, color, char, fg)
 		end
 	end
+	ctx.drawPixel = ifn.drawPixel
 	
 	ctx.drawText = function(x, y, text, color, fg)
 		text = (text and tostring(text)) or ""
-		runIFN(ifn.drawText, x, y, text, color, fg)
-		if x+#text<ctx.width then return x+#text, y else return 0, y+1 end
+		ifn.drawText(x, y, text, color, fg)
 	end
-	ifn.drawText = function(q, x, y, text, color, fg)
+	ifn.drawText = function(x, y, text, color, fg)
 		checkInitialized(internals)
 		color = color or internals.CONFIG.defaultBackgroundColor
 		fg = fg or internals.CONFIG.defaultTextColor
@@ -123,14 +120,14 @@ context.getContext = function(parent, x, y, l, h)
 		if #text==0 then return end
 		if pifn.drawText and internals.optimizationsEnabled then
 			x, y = cXY(ctx, x, y)
-			q(pifn.drawText, ctx.position.x+x, ctx.position.y+y, text, color, fg)
+			return pifn.drawText(ctx.position.x+x, ctx.position.y+y, text, color, fg)
 		else
 			local ox, oy = 0,0
 			for i=1, #text do
 				if text:sub(i,i)=="\n" then
 					ox,oy = 0,oy+1
 				else
-					q(ifn.drawPixel, ctx.position.x+x+ox, ctx.position.y+y+oy, color, text:sub(i,i), fg)
+					ifn.drawPixel(ctx.position.x+x+ox, ctx.position.y+y+oy, color, text:sub(i,i), fg)
 					ox=ox+1
 				end
 			end
@@ -140,12 +137,10 @@ context.getContext = function(parent, x, y, l, h)
 	ctx.drawRect = function(x, y, l, h, fill, color, char, fg)
 		if checkLH(l, h) then return end
 		char = char and tostring(char) or " "
-		runIFN((fill==false and ifn.drawEmptyRect) or ifn.drawFilledRect, x, y, l, h, color, char, fg)
-		local nx, ny = x+l, y+h
-		if nx>=ctx.width then nx, ny = 0, ny+1 end
-		return nx, ny
+		local func = (fill==false and ifn.drawEmptyRect) or ifn.drawFilledRect
+		func(x, y, l, h, color, char, fg)
 	end
-	ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
+	ifn.drawFilledRect = function(x, y, l, h, color, char, fg)
 		checkInitialized(internals)
 		color = color or internals.CONFIG.defaultBackgroundColor
 		fg = fg or internals.CONFIG.defaultTextColor
@@ -154,27 +149,27 @@ context.getContext = function(parent, x, y, l, h)
 			if x<ctx.width and y<ctx.height then
 				l = (l+x < ctx.width and l) or ctx.width-x
 				h = (h+y < ctx.height and h) or ctx.height-y
-				q(pifn.drawFilledRect, ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
+				return pifn.drawFilledRect(ctx.position.x+x, ctx.position.y+y, l, h, color, char, fg)
 			end
 		else
 			for ox=0, l-1 do
 				for oy=0, h-1 do
-					q(ifn.drawPixel, x+ox, y+oy, color, char or " ", fg)
+					ifn.drawPixel(x+ox, y+oy, color, char or " ", fg)
 				end
 			end
 		end
 	end
-	ifn.drawEmptyRect = function(q, x, y, l, h, color, char, fg)
+	ifn.drawEmptyRect = function(x, y, l, h, color, char, fg)
 		checkInitialized(internals)
 		color = color or internals.CONFIG.defaultBackgroundColor
 		fg = fg or internals.CONFIG.defaultTextColor
 		for ox=0, l-1 do
-			q(ifn.drawPixel, x+ox, y, color, char, fg)
-			q(ifn.drawPixel, x+ox, y+h-1, color, char, fg)
+			ifn.drawPixel(x+ox, y, color, char, fg)
+			ifn.drawPixel(x+ox, y+h-1, color, char, fg)
 		end
 		for oy=0, h-1 do
-			q(ifn.drawPixel, x, y+oy, color, char, fg)
-			q(ifn.drawPixel, x+l-1, y+oy, color, char, fg)
+			ifn.drawPixel(x, y+oy, color, char, fg)
+			ifn.drawPixel(x+l-1, y+oy, color, char, fg)
 		end
 	end
 	
@@ -188,23 +183,18 @@ context.getContext = function(parent, x, y, l, h)
 		meta.fillChar = meta.fillChar or " "
 		meta.fillTextColor = meta.fillTextColor or fg
 	
-		runIFN(ifn.drawTextBox, x, y, text, color, fg, meta)
-		
-		local nx, ny = x+meta.width, y+meta.height
-		if nx>=ctx.width then nx, ny = 0, ny+1 end
-		return nx, ny
+		ifn.drawTextBox(x, y, text, color, fg, meta)
 	end
-	ifn.drawTextBox = function(q, x, y, text, color, fg, meta)
+	ifn.drawTextBox = function(x, y, text, color, fg, meta)
 		checkInitialized(internals)
-		q(ifn.drawFilledRect, x, y, meta.width, meta.height, color, meta.fillChar, meta.fillTextColor)
-		q(ifn.drawText, x, y, text, color, fg)
+		ifn.drawFilledRect(x, y, meta.width, meta.height, color, meta.fillChar, meta.fillTextColor)
+		ifn.drawText(x, y, text, color, fg)
 	end
 	
 	ctx.blit = function(x, y, str, bstr, fstr)
-		runIFN(ifn.blit, x, y, str, bstr, fstr)
-		if x+#str<ctx.width then return x+#str, y else return 0, y+1 end
+		ifn.blit(x, y, str, bstr, fstr)
 	end
-	ifn.blit = function(q, x, y, str, bstr, fstr)
+	ifn.blit = function(x, y, str, bstr, fstr)
 		checkInitialized(internals)
 		if pifn.blit and ctx.optimizationsEnabled then
 			if y>ctx.height then return end
@@ -212,14 +202,14 @@ context.getContext = function(parent, x, y, l, h)
 			str = str:sub(1, ctx.width-x)
 			bstr = bstr:sub(1, ctx.width-x)
 			fstr = fstr:sub(1, ctx.width-x)
-			q(pifn.blit, x+ctx.position.x, y+ctx.position.y, str, bstr, fstr)
+			return pifn.blit(x+ctx.position.x, y+ctx.position.y, str, bstr, fstr)
 		else
 			fstr = fstr:gsub(" ", "F")
 			for i=1, #str do
 				if bstr:sub(i, i) ~= " " then
 					local bg = tonumber(bstr:sub(i,i), 16) or 0
 					local fg = tonumber(fstr:sub(i,i), 16) or 15
-					q(pifn.drawPixel, x+i-1, y, bg, str:sub(i, i), fg)
+					pifn.drawPixel(x+i-1, y, bg, str:sub(i, i), fg)
 				end
 			end
 		end
@@ -227,9 +217,10 @@ context.getContext = function(parent, x, y, l, h)
 	
 	ctx.applyBuffer = function(b, x, y, l, h)
 		checkInitialized(internals)
-		util.runIFN(ifn.applyBuffer, b, x, y, l, h)
+		ifn.applyBuffer(b, x, y, l, h)
 	end
-	ifn.applyBuffer = function(q, b, x, y, l, h)
+	ifn.applyBuffer = function(b, x, y, l, h)
+		local clock = os.clock()
 		checkInitialized(internals)
 		local function getPixelInfo(x, y, dtype) 
 			if not x or not y then return end
@@ -243,26 +234,25 @@ context.getContext = function(parent, x, y, l, h)
 		end
 		for k, v in util.ripairs(b) do
 			local mx, my = (v.x or 0)+x-b.scrollx, (v.y or 0)+y-b.scrolly
-			local bg, char, fg = 
-				v.background or getPixelInfo(v.x, v.y, "background"), 
-				v.char or getPixelInfo(v.x, v.y, "char"), 
-				v.foreground or getPixelInfo(v.x, v.y, "foreground")
-			if v.width==1 and v.height==1 then
-				q(ifn.drawPixel, mx, my, bg, char, fg)
-			else
-				q(ifn.drawFilledRect, (v.x or 0)+x, (v.y or 0)+y, v.width or l, v.height or h, bg, char, fg)
+			if v.width or v.height or (mx>=0 and mx<l) or (my>=0 and my<h) then
+				local bg, char, fg = 
+					v.background or getPixelInfo(v.x, v.y, "background"), 
+					v.char or getPixelInfo(v.x, v.y, "char"), 
+					v.foreground or getPixelInfo(v.x, v.y, "foreground")
+				if v.width==1 and v.height==1 then
+					ifn.drawPixel(mx, my, bg, char, fg)
+				else
+					ifn.drawFilledRect((v.x or 0)+x, (v.y or 0)+y, v.width or l, v.height or h, bg, char, fg)
+				end
 			end
 		end
 	end
 	
 	ctx.drawData = function(data)
-		runIFN(ifn.drawData, data)
+		ifn.drawData(data)
 		if not data[0] then return end
-		local x, y = data.x+#data[#data], data.y+#data
-		if x >= ctx.width then x, y = 0, y+1 end
-		return x, y
 	end
-	ifn.drawData = function(q, data)
+	ifn.drawData = function(data)
 		checkInitialized(internals)
 		if pifn.drawData and internals.optimizationsEnabled then
 			local nx, ny = cXY(ctx, data.x, data.y)
@@ -275,14 +265,14 @@ context.getContext = function(parent, x, y, l, h)
 					trimmedData[y][x] = {table.unpack(data[y][x])}
 				end
 			end
-			q(pifn.drawData, trimmedData)
+			pifn.drawData(trimmedData)
 		else
 			for y=0, #data do
 				if not data[y] then break end
 				for x=0, #data[y] do
 					if not data[y][x] then break end
 					if data[y][x][1] and data[y][x][2] then
-						q(ifn.drawPixel, x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
+						ifn.drawPixel(x+data.x, y+data.y, data[y][x][2], data[y][x][1], data[y][x][3] or 15)
 					end
 				end
 			end
@@ -392,7 +382,7 @@ context.getNativeContext = function(display)
 		end})
 		
 		if natives.term.blit then
-			ifn.blit = function(q, x, y, str, bstr, fstr)
+			ifn.blit = function(x, y, str, bstr, fstr)
 				checkInitialized(internals)
 				if term.getSimulated() then return end
 				
@@ -405,7 +395,7 @@ context.getNativeContext = function(display)
 					term.write(str)
 				end
 			end
-			ifn.drawData = function(q, data)
+			ifn.drawData = function(data)
 				checkInitialized(internals)
 				if term.getSimulated() then return end
 				
@@ -423,22 +413,22 @@ context.getNativeContext = function(display)
 				end
 				
 				for k, v in pairs(buffer) do
-					q(ifn.blit, data.x, data.y+k, buffer[k][1], buffer[k][2], buffer[k][3])
+					ifn.blit(data.x, data.y+k, buffer[k][1], buffer[k][2], buffer[k][3])
 				end
 			end
 		end
 		
 		local oldIFNAB = ifn.applyBuffer
-		ifn.applyBuffer = function(q, b, x, y, l, h)
+		ifn.applyBuffer = function(b, x, y, l, h)
 			checkInitialized(internals)
 			if ctx.enableCCFlickerOptimizations then
-				q(ifn.drawData, bctx.getData(b, x, y, l, h))
+				return ifn.drawData(bctx.getData(b, x, y, l, h))
 			else
-				q(oldIFNAB, b, x, y, l, h)
+				return oldIFNAB(b, x, y, l, h)
 			end
 		end
 		
-		ifn.drawPixel = function(q, x, y, color, char, fg)
+		ifn.drawPixel = function(x, y, color, char, fg)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -465,9 +455,8 @@ context.getNativeContext = function(display)
 				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor or 0))
 				term.clear()
 			else
-				runIFN(ifn.drawFilledRect, 0, 0, ctx.width, ctx.height, color, char)
+				return ifn.drawFilledRect(0, 0, ctx.width, ctx.height, color, char)
 			end
-			return 0, 0
 		end
 		ctx.startDraw = function()
 			checkCanStartDraw(internals)
@@ -534,12 +523,11 @@ context.getNativeContext = function(display)
 				local res = {pcall(function()
 					return gpu[k](table.unpack(args))
 				end)}
-				if not res[1] then debugger.log(res[2]) end
 				if res[1] then return table.unpack(res, 2) end
 			end
 		end})
 		
-		ifn.drawPixel = function(q, x, y, color, char, fg)
+		ifn.drawPixel = function(x, y, color, char, fg)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -555,7 +543,7 @@ context.getNativeContext = function(display)
 			end
 			term.set(x+1, y+1, char or " ")
 		end
-		ifn.drawFilledRect = function(q, x, y, l, h, color, char, fg)
+		ifn.drawFilledRect = function(x, y, l, h, color, char, fg)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -573,7 +561,7 @@ context.getNativeContext = function(display)
 			end
 			gpu.fill(x+1, y+1, l, h, char or " ")
 		end
-		ifn.blit = function(q, x, y, str, bstr, fstr)
+		ifn.blit = function(x, y, str, bstr, fstr)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 			
@@ -605,15 +593,15 @@ context.getNativeContext = function(display)
 		end
 		
 		local oldIFNAB = ifn.applyBuffer
-		ifn.applyBuffer = function(q, b, x, y, l, h)
+		ifn.applyBuffer = function(b, x, y, l, h)
 			checkInitialized(internals)
 			if ctx.enableOCFlickerOptimizations then
-				q(ifn.drawData, bctx.getData(b, x, y, l, h))
+				return ifn.drawData(bctx.getData(b, x, y, l, h))
 			else
-				q(oldIFNAB, b, x, y, l, h)
+				return oldIFNAB(b, x, y, l, h)
 			end
 		end
-		ifn.drawData = function(q, data)
+		ifn.drawData = function(data)
 			checkInitialized(internals)
 			if term.getSimulated() then return end
 
