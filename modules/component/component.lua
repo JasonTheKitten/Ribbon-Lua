@@ -78,6 +78,13 @@ function Component:__call(parent)
 			self.parent.handlers.onupdate(nil, self)
 		end
 	end
+	self.handlers.ongraphicsupdate = function()
+		self.eventSystem.fireEvent("component_graphics_update", nil)
+		if self.attributes.ongraphicsupdate then self.attributes.ongraphicsupdate(nil) end
+		if self.parent and self.parent.handlers.ongraphicsupdate then
+			self.parent.handlers.ongraphicsupdate(nil, self)
+		end
+	end
 	
 	local function setSelectedEvent(n, e)
 		if e.button == 1 and self.attributes["enabled"] then
@@ -217,6 +224,9 @@ end
 
 function Component:fireUpdateEvent()
     self.handlers.onupdate()
+end
+function Component:fireGraphicsUpdateEvent()
+    self.handlers.ongraphicsupdate()
 end
 
 function Component:setContextInternal()

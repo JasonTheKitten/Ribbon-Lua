@@ -51,6 +51,9 @@ function BaseComponent:render()
 	self.defaultComponent:calcSize(self.spg)
 	self.defaultComponent:draw()
 end
+function BaseComponent:renderGraphics()
+	self.defaultComponent:draw()
+end
 
 function basecomponent.execute(func)
 	local cctx = {}

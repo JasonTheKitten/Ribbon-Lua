@@ -18,7 +18,7 @@ local function getData(buffer, x, y, l, h)
 		data[y] = {}
 		for x=0, l-1 do data[y][x] = {} end
 	end
-	for k, v in ipairs(buffer) do --todo: scroll again
+	for k, v in ipairs(buffer) do
 		if v.x and v.y and v.width and v.height then
 			local sy, sx
 			for y=v.y, v.y+v.height-1 do

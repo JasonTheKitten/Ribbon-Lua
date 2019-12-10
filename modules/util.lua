@@ -1,6 +1,9 @@
 local ribbon = require()
 
 local fs = ribbon.require "filesystem"
+local environment = ribbon.require "environment"
+
+local isOC = environment.is("OC")
 
 local util = ...
 
@@ -65,6 +68,21 @@ util.stringToTable = function(s, r, t)
 		end
 	end
 	return t
+end
+util.stringFindAny = function(part, pattern, index)
+	if isOC then
+		local fres
+		for i=1, #pattern do --Avoid patterns, as they are slow on OC
+			local res = part:find(pattern:sub(i, i), index)
+			if res then
+				fres = fres or res
+				fres = (res<fres and res) or fres
+			end
+		end
+		return fres
+	else
+		return part:find("["..pattern.."]", index)
+	end
 end
 util.split = function(str, l)
     local split = {}

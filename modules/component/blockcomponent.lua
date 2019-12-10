@@ -41,7 +41,7 @@ function BlockComponent:scrollY(n)
 		self.context.scroll.y=self.scrollableSize.height-self.context.height
 	end
 	if self.context.scroll.y<0 then self.context.scroll.y = 0 end
-	self:fireUpdateEvent()
+	self:fireGraphicsUpdateEvent()
 end
 
 --IFN functions

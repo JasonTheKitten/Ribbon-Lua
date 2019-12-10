@@ -346,6 +346,45 @@ if isCC then
 			id = e[2]
 		})
 	end)
+	
+	--HTTP
+	local function httpGenHandle(nh)
+		if not nh then return end
+		return {
+			getResponseHeader = function(n)
+				local headers = nh.getResponseHeaders()
+				n=n:lower()
+				for k, v in pairs(headers) do
+					if k:lower() == n then return v end
+				end
+			end,
+			getResponseHeaders = nh.getResponseHeaders,
+			getResponseCode = nh.getResponseCode,
+			--getResponseText = nh.getResponseText or function() return "<?>" end,
+			read = nh.read,
+			readAll = nh.readAll,
+			close = nh.close
+		}
+	end
+	process.registerEvent("http_success", function(e)
+		process.fireEvent("http_response", {
+			parent = process,
+			rawevent = e,
+			ok = true,
+			URL = e[2],
+			handle = httpGenHandle(e[3])
+		})
+	end)
+	process.registerEvent("http_failure", function(e)
+		process.fireEvent("http_response", {
+			parent = process,
+			rawevent = e,
+			ok = false,
+			URL = e[2],
+			error = e[3],
+			handle = httpGenHandle(e[4])
+		})
+	end)
 else
 	--Keyboard
 	process.registerEvent("key_down", function(e)

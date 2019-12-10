@@ -26,29 +26,32 @@ end
 local function internalSizeProc(self, size, f)
 	local lines = {""}
 	
-	self.text = self.attributes["text"] or ""
-	local text, lastSpaceBroke = self.text, false
+	local incLine = size.incLine
+	local incCursor = size.incCursor
+	local enableWrap = self.enableWrap
+	
+	self.text = (self.attributes["text"] or ""):gsub("[\128-\255]", "?") --TODO: Newer CC versions support these characters
+	local text, lastSpaceBroke = self.text.." ", false
 	size:fixCursor(self.enableWrap)
-	while #text>0 do
-		local char = text:sub(1, 1)
-		text = text:sub(2, #text)
+	for i=1, #text-1 do
+		local char = text:sub(i, i)
 		if char~="\n" and char~=" " then lines[#lines]=lines[#lines]..char end
 		if char == "\n" then
 			lastSpaceBroke = false
-			size:incLine()
+			incLine(size)
 			lines[#lines+1] = ""
 		elseif char == " " then
 			if not lastSpaceBroke then
-				local done = (text.." "):find(" ")
+				local done = text:find(" ", i+1) - i
 				local needed = size.position.x+done-size.size.width
 				if needed > 0 and not size:expandWidth(needed) then
-					if self.enableWrap then
-						size:incLine()
+					if enableWrap then
+						incLine(size)
 						lines[#lines+1] = ""
 					else
 						lines[#lines]=lines[#lines].." "
 					end
-				elseif size:incCursor(self.enableWrap) then
+				elseif incCursor(size, enableWrap) then
 					lines[#lines+1] = ""
 				else
 					lines[#lines]=lines[#lines].." "
@@ -59,12 +62,12 @@ local function internalSizeProc(self, size, f)
 		else
 			lastSpaceBroke = false
 			if #text>0 then
-				if size:incCursor(self.enableWrap) then
+				if incCursor(size, enableWrap) then
 					lastSpaceBroke = true
 					lines[#lines+1] = ""
 				end
 			else
-				size:incCursor(false)
+				incCursor(size, false)
 			end
 		end
 	end
@@ -72,13 +75,14 @@ local function internalSizeProc(self, size, f)
 	return lines
 end
 
+
 function Label.calcSizeIFN(q, self, size)
 	if not self.parent then return end
 
 	Component.calcSizeIFN(q, self, size)
 	
 	self.size = self.spg:cloneAll()
-	self.lines = internalSizeProc(self, self.spg)
+	self.lines = internalSizeProc(self, size)
 end
 function Label.drawIFN(q, self)
 	if not self.parent then return end

@@ -1,11 +1,15 @@
 local class = ...
 
+--Flags
+class.useMethodCache = true
+class.useFieldCache = false
+
 --Class
 local Class = {}
 class.Class = Class
 
 Class.cparents = {}
-Class.__eq = rawequal
+--Class.__eq = rawequal
 function Class:isA(class)
 	local queue = {self}
 	local p=0
@@ -15,32 +19,57 @@ function Class:isA(class)
 			return true
 		end
 		for i=#queue[p].cparents, 1, -1 do
-			table.insert(queue, queue[p].cparents[i])
+			queue[#queue+1] = queue[p].cparents[i]
 		end
 	end
 	return false
 end
 
 --class
-class.new = function(class, ...)
-	if not class then error("No class provided", 2) end
-	function class:__index(key)
-		local queue = {self}
-		while #queue>0 do
-			if rawget(queue[1], key) then
-				return rawget(queue[1], key)
-			end
-			for i=#queue[1].cparents, 1, -1 do
-				table.insert(queue, 2, queue[1].cparents[i])
-			end
-			table.remove(queue, 1)
-		end
-	end
+class.new = function(nclass, ...)
+	if not nclass then error("No class provided", 2) end
+	if not class.useMultiParent then
+    	function nclass:__index(key)
+    		local rtn = rawget(self, "cparents")[1]
+    		while rtn do
+                local res = rtn[key]
+                if res then
+                    if (class.useMethodCache and class.useFieldCache) or
+                        (class.useMethodCache and type(res) == "function") or
+                        (class.useFieldCache and type(res) ~= "function") then
+                        self[key] = res
+                    end
+                    return res
+                end
+                rtn=rtn.cparents[1]
+    	    end
+        end
+    else
+        function nclass:__index(key)
+            local queue = {self}
+    		local p=0
+    		while #queue>p do
+    			p=p+1
+    			local res = rawget(queue[p], key)
+    			if res then
+                    if (class.useMethodCache and class.useFieldCache) or
+                        (class.useMethodCache and type(res) == "function") or
+                        (class.useFieldCache and type(res) ~= "function") then
+                        self[key] = res
+                    end
+    				return res
+    			end
+    			for i=#queue[p].cparents, 1, -1 do
+    				queue[#queue+1]=queue[p].cparents[i]
+    			end
+    		end
+        end
+    end
 	
-	local rtn = {cparents = {class}}
-	setmetatable(rtn, class)
+	local rtn = {cparents = {nclass}}
+	setmetatable(rtn, nclass)
 	
-	if class.__call then
+	if nclass.__call then
 		rtn(...)
 	end
 	

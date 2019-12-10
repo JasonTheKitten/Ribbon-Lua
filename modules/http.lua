@@ -17,11 +17,11 @@ http.available = function()
     end
 end
 
-http.request = function(url, post, headers, callback)
+http.request = function(url, post, headers)
     local handle
     if isCC then
-        local site = natives.http.request()
-    else
+        natives.http.request(url, post, headers)
+    elseif isOC then
         local internet = component.proxy(component.list("gpu", true)())
     end
 end
