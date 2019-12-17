@@ -81,7 +81,7 @@ function Label.calcSizeIFN(q, self, size)
 
 	Component.calcSizeIFN(q, self, size)
 	
-	self.size = self.spg:cloneAll()
+	self.lastsize = self.spg:cloneAll()
 	self.lines = internalSizeProc(self, size)
 end
 function Label.drawIFN(q, self)
@@ -89,7 +89,7 @@ function Label.drawIFN(q, self)
 	
 	Component.drawIFN(q, self)
 	
-	local size = self.size:cloneAll()
+	local size = self.lastsize:cloneAll()
 	for y=1, #self.lines do --TODO: Only draw lines on screen (will be complicated)
 		local col = self.lines[y]
 		for x=1, #self.lines[y] do --Maybe just drawText?

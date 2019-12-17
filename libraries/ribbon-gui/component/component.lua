@@ -1,3 +1,4 @@
+--TODO: Bounding boxes for graphics
 --TODO: Support shared styles
 --TODO: Keyboard selection
 --TODO: Copy/Paste?
@@ -26,31 +27,31 @@ function Component:__call(parent)
 	if parent then
 		class.checkType(parent, Component, 3, "Component")
 	end
-	
+
 	self.children = {}
 	self.handlers = {}
 	self.triggers = {}
 	self.eventSystem = process.createEventSystem()
-	
+
 	self.attributes = {
 	    ["enabled"] = true,
 	    ["enable-wrap"] = true,
 	    ["enable-child-wrap"] = true
 	}
 	self.enableChildWrap = true
-	
+
 	local function regH(t, enableRequired)
 		self.triggers["on"..t] = function(e, d)
 			local d = util.copy(d)
 			d.element = self
-			
+
 			local clicked = {}
 			local pel = self
 			repeat
 				clicked[pel] = true
 				pel = pel.parent
 			until not pel.parent
-			
+
 			for k, v in pairs(pel:query()) do
 				if clicked[v] then
 					v.handlers["on"..t](e, d)
@@ -85,7 +86,7 @@ function Component:__call(parent)
 			self.parent.handlers.ongraphicsupdate(nil, self)
 		end
 	end
-	
+
 	local function setSelectedEvent(n, e)
 		if e.button == 1 and self.attributes["enabled"] then
             self:attribute("selected", true)
@@ -98,14 +99,14 @@ function Component:__call(parent)
             self:fireUpdateEvent()
         end
 	end
-	
+
 	self:addEventListener("click", setSelectedEvent)
 	self:addEventListener("external_click", setUnselectedEvent)
 	self:addEventListener("drag", setSelectedEvent)
 	self:addEventListener("external_drag", setUnselectedEvent)
 	self:addEventListener("release", setUnselectedEvent)
 	self:addEventListener("external_release", setUnselectedEvent)
-	
+
 	if parent then self:setParent(parent) end
 end
 
@@ -168,9 +169,9 @@ function Component:processAttributes(updated)
 			v:setParent(self)
 		end
 	end
-	self.color = (self.attributes.selected and self.attributes["selected-background-color"]) or 
+	self.color = (self.attributes.selected and self.attributes["selected-background-color"]) or
 		self.attributes["background-color"]
-	self.textColor = (self.attributes.selected and self.attributes["selected-text-color"]) or 
+	self.textColor = (self.attributes.selected and self.attributes["selected-text-color"]) or
 		self.attributes["text-color"]
 
 	self:fireUpdateEvent()
@@ -234,32 +235,33 @@ function Component:setContextInternal()
 	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.context
 	self.childcontext = self.dockcontext
 end
-function Component:queueChildrenCalcSize(q, size)
-    for k, v in util.ripairs(self.children) do
-		if v.location then q(v.calcSizeIFN, v, size) end
-	end
+function Component:queueChildrenCalcSize(q, size, values)
 	for k, v in util.ripairs(self.children) do
-		if not v.location then q(v.calcSizeIFN, v, size) end
+		if not v.location then 
+			q(v.calcSizeIFN, v, size, values)
+		else
+			values.processingQueue[#values.processingQueue+1] = {v, size}
+		end
 	end
 end
-function Component:mCalcSize(q, size)
+function Component:mCalcSize(q, size, delayed)
     self.enableWrap = self.parent.enableChildWrap and self.attributes["enable-wrap"]
     self.enableChildWrap = self.parent.enableChildWrap and self.attributes["enable-child-wrap"]
-    
+
     if self.location then
 		local l, oldPos = self.location, size.position
-		size.position = class.new(Position, 
+		size.position = class.new(Position,
 			ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], 0, l[5], 0, l[6])
 		)
 		q(function() size.position = oldPos end)
 	end
 	self.position = size.position:clone()
-	
+
     if not (self.attributes["location"] or self.attributes["dock"]) then
 		q(function() size:fixCursor(self.enableWrap) end)
 	end
-	
-	self:queueChildrenCalcSize(q, size)
+
+	self:queueChildrenCalcSize(q, size, values)
 end
 function Component:calcSize(size)
 	if size then
@@ -270,18 +272,26 @@ function Component:calcSize(size)
 	else
 		size = class.new(SizePosGroup)
 	end
-	runIFN(self.calcSizeIFN, self, size)
-end
-function Component.calcSizeIFN(q, self, size)
-	if not self.parent then return end
 	
+	local values = {processingQueue = {{self, size}}}
+	
+	local i = 0
+	while #values.processingQueue>i do
+		i=i+1
+		local cv = values.processingQueue[i]
+		runIFN(cv[1].calcSizeIFN, cv[1], cv[2], values)
+	end
+end
+function Component.calcSizeIFN(q, self, size, values)
+	if not self.parent then return end
+
 	if self.attributes["dock"] then
 		size = self.attributes["dock"].spg
 	end
 	self.spg = size
-	
+
 	self:setContextInternal()
-	self:mCalcSize(q, size)
+	self:mCalcSize(q, size, values)
 end
 
 function Component:draw()
@@ -289,14 +299,14 @@ function Component:draw()
 end
 function Component.drawIFN(q, self)
 	if not self.parent then return end
-	
+
 	if not self.dockcontext then return end
 
 	local of = self.dockcontext.getFunctions()
 	self.dockcontext.setFunction("onclick", self.triggers.onclick)
 	self.dockcontext.setFunction("ondrag", self.triggers.ondrag)
 	self.dockcontext.setFunction("onrelease", self.triggers.onrelease)
-	
+
 	local dbg, dfg = self.context.getColors()
 	local obg, ofg = self.dockcontext.getColors()
 	self.dockcontext.setColorsRaw(self.color or obg, self.textColor or ofg)

@@ -41,6 +41,7 @@ class.new = function(nclass, ...)
                     end
                     return res
                 end
+				if not rtn.cparents then error("cparents field missing", 2) end
                 rtn=rtn.cparents[1]
     	    end
         end

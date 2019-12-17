@@ -5,7 +5,7 @@ local util = ribbon.require "util"
 local asset = ...
 
 local groups = {}
-asset.load = function(g, f)
+asset.load = function(g, f, json)
     local unserialize = util.unserialize
 
 	local data
@@ -14,7 +14,7 @@ asset.load = function(g, f)
 	else
 		data = unserialize(util.inf(f))
 	end
-	
+
 	g = g or {}
 	if type(g) ~="table" then
 		groups[g] = {}

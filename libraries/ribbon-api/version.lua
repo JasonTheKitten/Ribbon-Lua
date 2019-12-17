@@ -1,6 +1,6 @@
 local cpv = ...
 
-local mv,miv,pv = 0,0,0
+local mv,miv,pv = 0,1,0
 local cn = "ALPHA"
 
 cpv.getMajorVersion = function()
@@ -13,7 +13,7 @@ cpv.getPatchVersion = function()
 	return pv
 end
 cpv.getVersions = function()
-	return mv,miv,pv
+	return mv,miv,pv,cn
 end
 cpv.getVersionString = function()
 	return tostring(mv).."."..tostring(miv).."."..tostring(pv)

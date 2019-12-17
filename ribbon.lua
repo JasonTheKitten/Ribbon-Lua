@@ -22,7 +22,7 @@ for k, v in pairs(nAPP) do APP[k] = v end
 ribbon.setAppInfo = function(inf)
     APP = inf
 	APP.TYPE = APP.TYPE or nAPP.TYPE
-    
+
     return ribbon
 end
 ribbon.getAppInfo = function()
@@ -49,13 +49,13 @@ end
 ribbon.resolvePath = function(path, ftable, maxTries)
     if path:sub(1, 1) == "!" then return path:sub(2, #path) end
     if path:sub(1, 1) == "#" then path = path:sub(2, #path) end
-    
+
 	maxTries = maxTries or APP.PATHRESOLUTIONTRIES or 50
 
     local pathreps = {}
     for k, v in pairs(APP.PATHS) do pathreps[k] = v end
     for k, v in pairs(ftable or {}) do pathreps[k] = v end
-    
+
 	--We must resolve multiple times, as some paths may reference others
 	local oldpath, tries = "", 0
 	while oldpath~=path do
@@ -68,21 +68,42 @@ ribbon.resolvePath = function(path, ftable, maxTries)
 end
 
 --Require Ribbon modules
-local required = {}
-ribbon.require = function(p)
+local required, cachedFS = {}, nil
+ribbon.require = function(p, e)
     if not required[p] then
+        local plist = {
+            ribbon.resolvePath("${RIBBON}/modules/${module}.lua", {module=p})
+        }
+
+		if cachedFS == nil then
+			local ok, rtn = pcall(ribbon.require, "filesystem", false)
+			cachedFS = ok and rtn
+		end
+        if cachedFS and elibs~=false then
+			local libsPath = ribbon.resolvePath("${RIBBON}/libraries")
+            local list = cachedFS.list(libsPath)
+            for i=1, #list do
+                local resolved = libsPath.."/"..list[i].."/"..p..".lua"
+                if cachedFS.isFile(resolved) then
+                    plist[#plist+1] = resolved
+                end
+            end
+        end
+
+        local m, err = nil, "File Not Found"
+        for i=1, #plist do
+            m,err=env.loadfile(plist[i], "tb", env)
+            if m then break end
+        end
+
+        if not m then error("Failed to load module \""..p.."\" because:\n"..err, 2) end
+
         required[p] = {}
-    	local m, err=env.loadfile(ribbon.resolvePath(
-            "${RIBBON}/modules/${module}.lua", {module=p}
-        ), "tb", env)
-    	if not m then error("Failed to load module \""..p.."\" because:\n"..err, 2) end
     	local extramethods=m(required[p])
-    	
-    	setmetatable(required[p], {
-    		__index=extramethods
-    	})
+
+    	setmetatable(required[p], {__index=extramethods})
     end
-	
+
     return required[p]
 end
 
@@ -108,14 +129,18 @@ end
 
 --Execute
 ribbon.execute = function(path, ...)
-	--Cache certain modules
-	ribbon.require("ribbonos")
-
-	--Execute
 	if not path then error("No path supplied", 2) end
 	local func, err = env.loadfile(ribbon.resolvePath(path), "t", env)
-	if not func then error(err, 2) end
-	ribbon.require("process").execute(func, ...)
+    if not func then error(err, 2) end
+	
+	pcall(ribbon.require, "ribbonos")
+
+    local ok, process = pcall(ribbon.require, "process")
+    if ok then
+        process.execute(func, ...)
+    else
+        func(...) --TODO: Warn
+    end
 end
 
 --Arg passing
@@ -209,8 +234,8 @@ env.require = function(arg)
     if (not arg) or (arg=="") then
         return ribbon
     end
-    if package.loaded[arg] then 
-        return package.loaded[arg] 
+    if package.loaded[arg] then
+        return package.loaded[arg]
     end
     --TODO: Require
 end

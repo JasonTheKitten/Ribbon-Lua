@@ -13,16 +13,18 @@ http.available = function()
     if isCC then
         return not not natives.http
 	elseif isOC then
-		return true
+		return not not component.list("internet", true)()
     end
 end
 
 http.request = function(url, post, headers)
+    if not http.available() then error("HTTP functionality is not currently available") end
+
     local handle
     if isCC then
         natives.http.request(url, post, headers)
     elseif isOC then
-        local internet = component.proxy(component.list("gpu", true)())
+        local internet = component.proxy(component.list("internet", true)())
     end
 end
 

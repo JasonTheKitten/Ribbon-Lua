@@ -1,9 +1,11 @@
 --Thank you @LDDestroier for getting workspace to work space with Ribbon!
 --Thank you @Justyn for the alternate code for the `char` event in OC.
---TODO: Thank you @SquidDev for suggesting the use of os.sleep for timer events.
 
---TODO: HTTP
+--TODO: Thank you @SquidDev for suggesting the use of os.sleep for timer events.
+--TODO: Finish HTTP
 --TODO: Move interrupts enabled check, queue interrupts, add clear interrupts function
+--TODO: "False yields" - hide yielding from programs
+--TODO: settimeout-type function
 
 local ribbon = require()
 
@@ -48,7 +50,7 @@ process.execute = function(f, ...)
 		ok, err = coroutine.resume(c, ribbon.getPassArgs())
 	end
 	local function terminate()
-		error("User terminated application", -1) 
+		error("User terminated application", -1)
 	end
 	if isCC then
 		catchEvents = function()
@@ -187,7 +189,7 @@ process.createEventSystem = function()
 	--[[eventSystem.getLatestEvent = function()
 		return eventSystem.latestEvent
 	end]]
-	
+
 	return eventSystem, function(tbl)
 		--Event System Installer
 		for k, v in pairs(eventSystem) do
@@ -236,7 +238,7 @@ if isCC then
 			rawevent = e
 		})
 	end)
-	
+
 	--Modem
 	process.registerEvent("modem_message", function(e)
 		process.fireEvent("modem_message", {
@@ -248,7 +250,7 @@ if isCC then
 			distance = e[6],
 		})
 	end)
-	
+
 	--Display
 	process.registerEvent("term_resize", function(e)
 		process.fireEvent("display_resize", {
@@ -262,7 +264,7 @@ if isCC then
 			rawevent = e
 		})
 	end)
-	
+
 	--Mouse
 	process.registerEvent("mouse_click", function(e)
 		process.fireEvent("mouse_click", {
@@ -314,7 +316,7 @@ if isCC then
 			display = nil
 		})
 	end)
-	
+
 	--Inventory
 	process.registerEvent("turtle_inventory", function(e)
 		process.fireEvent("inventory_edit", {
@@ -322,7 +324,7 @@ if isCC then
 			rawevent = e,
 		})
 	end)
-	
+
 	--Redstone
 	process.registerEvent("redstone", function(e)
 		process.fireEvent("redstone_edit", {
@@ -330,7 +332,7 @@ if isCC then
 			rawevent = e,
 		})
 	end)
-	
+
 	--Device
 	process.registerEvent("peripheral", function(e)
 		process.fireEvent("device_connected", {
@@ -346,7 +348,7 @@ if isCC then
 			id = e[2]
 		})
 	end)
-	
+
 	--HTTP
 	local function httpGenHandle(nh)
 		if not nh then return end
@@ -415,7 +417,7 @@ else
 			rawevent = e
 		})
 	end)
-	
+
 	--Modem
 	process.registerEvent("modem_message", function(e)
 		process.fireEvent("modem_message", {
@@ -427,7 +429,7 @@ else
 			message = e[6]
 		})
 	end)
-	
+
 	--Display
 	process.registerEvent("screen_resize", function(e)
 		--TODO: Include size
@@ -436,7 +438,7 @@ else
 			rawevent = e
 		})
 	end)
-	
+
 	--Mouse
 	process.registerEvent("touch", function(e)
 		process.fireEvent("mouse_click", {
@@ -476,7 +478,7 @@ else
 			display = nil
 		})
 	end)
-	
+
 	--Inventory
 	process.registerEvent("inventory_changed", function(e)
 		process.fireEvent("inventory_edit", {
@@ -484,7 +486,7 @@ else
 			rawevent = e,
 		})
 	end)
-	
+
 	--Redstone
 	process.registerEvent("redstone_changed", function(e)
 		process.fireEvent("redstone_edit", {
@@ -492,7 +494,7 @@ else
 			rawevent = e,
 		})
 	end)
-	
+
 	--Device
 	process.registerEvent("component_added", function(e)
 		process.fireEvent("device_connected", {

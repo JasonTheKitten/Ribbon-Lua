@@ -1,5 +1,5 @@
 --TODO: Timed macros
-local ribbon = require "ribbon"
+local ribbon = require()
 
 local eventtracker = ribbon.require "eventtracker"
 local process = ribbon.require "process"
@@ -9,9 +9,7 @@ local keyboard = eventtracker.keyboard
 local macroapi = ...
 
 macroapi.createMacroSystem = function()
-    local macro = {}
-    
-    local pid
+    local macro, mr, id, pid = {}, {}, -1, nil
     
     macro.install = function()
         if pid then return end
@@ -36,7 +34,6 @@ macroapi.createMacroSystem = function()
         return true
     end
     
-    local mr, id = {}, -1
     macro.register = function(macro, f, ido)
         local mid = ido
         if not mid then

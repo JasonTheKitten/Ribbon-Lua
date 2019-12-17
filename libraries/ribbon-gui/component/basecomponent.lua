@@ -1,9 +1,7 @@
 local ribbon = require()
 
-local bctx = ribbon.require "bufferedcontext"
 local class = ribbon.require "class"
-local contextapi = ribbon.require "context"
-local displayapi = ribbon.require "display"
+local contextmanager = ribbon.require "contextmanager"
 local process = ribbon.require "process"
 
 local Size = ribbon.require("class/size").Size
@@ -18,23 +16,31 @@ basecomponent.BaseComponent = BaseComponent
 
 BaseComponent.cparents = {Component}
 function BaseComponent:__call(ctx, es)
-	Component.__call(self)
+    if not (ctx or contextmanager.running) then error("Either a context must be specified, or the context manager must be running.", 2) end
+
+    Component.__call(self)
+    ctx = ctx or contextmanager.getDisplayContext()
 	self.context = ctx
 	self.childcontext = ctx
-	self.eventSystem = process
+	self.eventSystem = es or process
 	self.defaultComponent = class.new(BufferedComponent, self):attribute(
-		"background-color", 0, 
-		"text-color", 15,
 		"width", {1, 0},
 		"height", {1, 0}
 	)
-	self:update()
+    self:update()
+
+    self.updated, self.graphicsUpdated = false, false
+    self:addEventListener("component_update", function() self.updated = true end)
+    self:addEventListener("component_graphics_update", function() self.graphicsUpdated = true end)
 end
 
 function BaseComponent:setParent() end
 
 function BaseComponent:getDefaultComponent()
 	return self.defaultComponent
+end
+function BaseComponent:getComponents()
+    return self, self.defaultComponent
 end
 function BaseComponent:update()
 	local oldWidth, oldHeight = self.context.width, self.context.height
@@ -55,21 +61,14 @@ function BaseComponent:renderGraphics()
 	self.defaultComponent:draw()
 end
 
-function basecomponent.execute(func)
-	local cctx = {}
-	local ok, err = pcall(func, function(display)
-		display = display or displayapi.getDefaultDisplayID()
-		if type(display) == "number" then
-			display = displayapi.getDisplay(display)
-		end
-		
-		local octx = cctx[display] or contextapi.getNativeContext(display)
-		octx.startDraw()
-		
-		cctx[display] = octx
-		
-		return octx
-	end)
-	for k, v in pairs(cctx) do v.endDraw() end
-	if not ok then error(err, -1) end
+function BaseComponent:renderUpdated()
+    if self.updated or self:update() then
+        self:render()
+        self.updated, self.graphicsUpdated = false, false
+    elseif self.graphicsUpdated then
+        self:renderGraphics()
+        self.graphicsUpdated = false
+    end
 end
+
+basecomponent.execute = contextmanager.inContextManager --TODO: deprecated alias

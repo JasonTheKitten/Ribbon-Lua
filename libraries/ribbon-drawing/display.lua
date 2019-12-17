@@ -8,7 +8,7 @@ local isOC = environment.is("OC")
 
 local display = ...
 
-local term_current, term_native = {}, {}
+local term_current, term_native, null_ref = {}, {}, {}
 display.term_current, display.term_native = term_current, term_native
 local displays, displays2 = {[0] = term_current}, {}
 if isCC then table.insert(displays, term_native) end
@@ -36,7 +36,7 @@ display.getDisplays = function()
 	elseif isOC then
 		local component = natives.require("component")
 		local gpu = component.proxy(component.list("gpu", true)())
-		if not gpu then 
+		if not gpu then
 			displays[0] = null_ref
 			return displays
 		end

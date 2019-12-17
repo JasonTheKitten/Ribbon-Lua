@@ -38,22 +38,22 @@ function BufferedComponent:setContextInternal()
 end
 function BufferedComponent.drawIFN(q, self, hbr)
 	if not self.parent then return end
-	
+
 	local of = self.context.getFunctions()
 	self.context.setFunction("onclick", self.handlers.onclick)
 	self.context.setFunction("ondrag", self.handlers.ondrag)
 	self.context.setFunction("onrelease", self.handlers.onrelease)
-	
+
 	local obg, ofg = self.context.getColors()
 	local dbg, dfg = self.parent.context.getColors()
 	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
 	self.context.startDraw()
-	
+
 	q(function()
 		self.context.endDraw()
 		self.context.setColorsRaw(obg, ofg)
 		self.context.setFunctions(of)
-		
+
 		local ofp
 		if self.dockcontext.setFunction then
 			ofp = self.dockcontext.getFunctions()
@@ -64,9 +64,9 @@ function BufferedComponent.drawIFN(q, self, hbr)
 			self.dockcontext.setFunctions(ofp)
 		end
 	end)
-	
+
 	self.context.clear()
-	
+
 	for k, v in util.ripairs(self.children) do
 		q(v.drawIFN, v, size)
 	end

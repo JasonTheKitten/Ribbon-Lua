@@ -18,14 +18,15 @@ function HSpan:__call(parent)
 	self.attributes["enable-child-wrap"] = false
 end
 
-function HSpan:queueChildrenCalcSize(q, size)
+function HSpan:queueChildrenCalcSize(q, size, values)
     for k, v in util.ripairs(self.children) do
-		if v.location then q(v.calcSizeIFN, v, size) end
-	end
-	for k, v in util.ripairs(self.children) do
-		if not v.location then q(function()
-            size.position.y = 0
-            v.calcSizeIFN(q, v, size)
-		end) end
+		if not v.location then 
+			q(function()
+				size.position.y = 0
+				v.calcSizeIFN(q, v, size, values)
+			end)
+		else
+			values.processingQueue[#values.processingQueue+1] = {v, size}
+		end
 	end
 end

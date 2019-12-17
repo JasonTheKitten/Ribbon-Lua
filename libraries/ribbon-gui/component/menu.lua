@@ -29,16 +29,16 @@ function Menu:__call(parent)
 		"text-color", COLORS.BLACK,
 		"depth", {}
 	) end
-	self:addEventListener("external_click", function() 
+	self:addEventListener("external_click", function()
 		self:delete()
 	end)
 end
 function Menu:processAttributes(updated)
 	Component.processAttributes(self, updated)
-	
+
 	if updated["options"] then
 		self:removeChildren()
-		for k, v in ipairs(self.attributes["options"]) do --TODO: ">" on sub-menus
+		for k, v in ipairs(self.attributes["options"]) do
 			if type(v) == "string" then v = {v} end
 			local itemComponent = (type(v[1]) == "string" and class.new(Button, nil, v[1])) or v[1]
 			if not v[2] then
@@ -67,11 +67,11 @@ function Menu:processAttributes(updated)
 					end
 				)
 			end
-			
+
 			class.new(Break, self)
 		end
 	end
 	if updated["selected-text-color"] or updated["selected-background-color"] then
-        
+            
 	end
 end

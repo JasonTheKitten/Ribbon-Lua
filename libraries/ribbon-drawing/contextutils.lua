@@ -2,7 +2,7 @@
 local contextutils = ...
 
 --Context Lib
-contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph)
+contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph, ovw, ovh)
 	local ol, oy = 0, 0
 	if l and opl and l>0 and opl~=0 then
 		ol = l*opl
@@ -12,8 +12,8 @@ contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph)
 	end
 	ax, ay, px, py = ax or 0, ay or 0, px or 0, py or 0
 	return 
-		math.floor(ax+ctx.width*px+ol), 
-		math.floor(ay+ctx.height*py+oy)
+		math.floor(ax+(ovw or ctx.width)*px+ol), 
+		math.floor(ay+(ovh or ctx.height)*py+oy)
 end
 
 contextutils.translateMouseCordsUp = function(ctx, x, y, parent)

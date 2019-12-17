@@ -5,8 +5,10 @@ local contextapi = ribbon.require "context"
 local sctx = ...
 
 sctx.getContext = function(p, x, y, l, h)
-	local ctx = contextapi.getContext(p, x, y, l, h)
-	
+	return sctx.wrapContext(contextapi.getContext(p, x, y, l, h))
+end
+sctx.wrapContext = function(ctx, p)
+    p = p or ctx.parent
 	ctx.useFunctions = p.useFunctions
 	ctx.setFunctions = p.setFunctions
 	ctx.setFunction = p.setFunction

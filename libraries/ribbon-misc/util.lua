@@ -61,7 +61,7 @@ end
 util.stringToTable = function(s, r, t)
 	t = t or {}
 	for i=1, #s do
-		if r then 
+		if r then
 			t[s:sub(i, i)] = i
 		else
 			t[i] = s:sub(i, i)
@@ -111,13 +111,15 @@ end
 
 util.unpack = function(tbl, pos)
     local str, pos, high = "return ", pos or 1, util.getHighestIndex(tbl)
+    if high==#tbl then return table.unpack(tbl, pos) end
     for i=pos, high do
-		str=str.."tbl["..tostring(i).."],"
+		str=str.."_["..tostring(i).."],"
 	end
-    return loadstring(str:sub(1, -1), "t", "util<unpack>", {tbl=tbl})()
+    return loadstring(str:sub(1, -1), "t", "util<unpack>", {_=tbl})()
 end
 util.unpackNoNil = function(tbl, pos, value)
-	local unpacked, pos, high = {}, pos or 1, util.getHighestIndex(tbl)
+    local unpacked, pos, high = {}, pos or 1, util.getHighestIndex(tbl)
+    if high==#tbl then return table.unpack(tbl, pos) end
 	for i=pos, high do
 		unpacked[i-pos+1] = tbl[i] or value or false
 	end
