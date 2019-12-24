@@ -1,6 +1,7 @@
 local ribbon = require()
 
 local process = ribbon.require "process"
+local debugger = ribbon.require "debugger"
 
 local eventtracker = ...
 

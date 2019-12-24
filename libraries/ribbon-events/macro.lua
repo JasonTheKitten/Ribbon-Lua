@@ -1,4 +1,5 @@
 --TODO: Timed macros
+--TODO: OC allows multiple keyboards
 local ribbon = require()
 
 local eventtracker = ribbon.require "eventtracker"
@@ -10,7 +11,7 @@ local macroapi = ...
 
 macroapi.createMacroSystem = function()
     local macro, mr, id, pid = {}, {}, -1, nil
-    
+
     macro.install = function()
         if pid then return end
         pid = process.addEventListener("key_down", function()
@@ -21,20 +22,28 @@ macroapi.createMacroSystem = function()
             end
         end)
     end
-    
+
     macro.cleanup = function()
         process.unregister(pid)
         pid = nil
     end
-    
+
     macro.check = function(keys)
-        for k, v in pairs(keys) do
-            if not keyboard[v] then return false end
+        for i=1, #keys do
+            if not keyboard[keys[i]] then return false end
         end
         return true
     end
-    
+
     macro.register = function(macro, f, ido)
+        if type(macro) == "number" then
+            macro = {macro}
+        elseif type(macro) == "string" then
+            --TODO
+		else
+			macro = {-1}
+        end
+
         local mid = ido
         if not mid then
             while mr[id] do
@@ -49,9 +58,9 @@ macroapi.createMacroSystem = function()
     macro.unregister = function(id)
         mr[id] = nil
     end
-    
+
     macro.install()
-    
+
     return macro, function(obj)
         for k, v in pairs(macro) do obj[k] = v end
     end

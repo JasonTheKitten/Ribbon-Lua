@@ -1,6 +1,6 @@
---TODO: Bounding boxes for graphics
+--TODO: Bounding boxes for graphic updates
 --TODO: Support shared styles
---TODO: Keyboard selection
+--TODO: Keyboard selection (Tab-Focus)
 --TODO: Copy/Paste?
 
 local ribbon = require()
@@ -52,11 +52,13 @@ function Component:__call(parent)
 				pel = pel.parent
 			until not pel.parent
 
-			for k, v in pairs(pel:query()) do
+			local q = pel:query()
+			for i=1, #q do
+				local v = q[i]
 				if clicked[v] then
 					v.handlers["on"..t](e, d)
 				else
-					v.handlers["onexternal"..t](e, d)
+					v.handlers["onexternal"..t](e, d) --TODO: Not firing?
 				end
 			end
 		end
@@ -206,9 +208,9 @@ function Component:query(qf)
 	local q, final = {self}, {}
 	while #q>0 do
 		local curi = q[#q]; q[#q] = nil
-		if not qf or qf(curi) then table.insert(final, curi) end
-		for k, v in pairs(curi.children) do
-			table.insert(q, v)
+		if not qf or qf(curi) then final[#final+1] = curi end
+		for i=1, #curi.children do
+			q[#q+1]=curi.children[i]
 		end
 	end
 	return final
@@ -237,7 +239,7 @@ function Component:setContextInternal()
 end
 function Component:queueChildrenCalcSize(q, size, values)
 	for k, v in util.ripairs(self.children) do
-		if not v.location then 
+		if not v.location then
 			q(v.calcSizeIFN, v, size, values)
 		else
 			values.processingQueue[#values.processingQueue+1] = {v, size}
@@ -272,9 +274,9 @@ function Component:calcSize(size)
 	else
 		size = class.new(SizePosGroup)
 	end
-	
+
 	local values = {processingQueue = {{self, size}}}
-	
+
 	local i = 0
 	while #values.processingQueue>i do
 		i=i+1

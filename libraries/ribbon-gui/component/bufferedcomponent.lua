@@ -32,21 +32,22 @@ end
 --IFN functions
 function BufferedComponent:setContextInternal()
 	self.dockcontext = (self.attributes["dock"] and self.attributes["dock"].context) or self.parent.childcontext
-	self.context = self.context or bctx.getContext(self.parent.context, 0, 0, 0, 0, self.parent.eventSystem)
+	self.context = self.context or bctx.getContext(self.dockcontext, 0, 0, 0, 0, self.parent.eventSystem)
 	self.context.setParent(self.dockcontext)
 	self.childcontext = self.context
 end
 function BufferedComponent.drawIFN(q, self, hbr)
 	if not self.parent then return end
 
-	local of = self.context.getFunctions()
-	self.context.setFunction("onclick", self.handlers.onclick)
-	self.context.setFunction("ondrag", self.handlers.ondrag)
-	self.context.setFunction("onrelease", self.handlers.onrelease)
-
 	local obg, ofg = self.context.getColors()
 	local dbg, dfg = self.parent.context.getColors()
+	local of = self.context.getFunctions()
+	
+	self.context.setFunction("onclick", self.triggers.onclick)
+	self.context.setFunction("ondrag", self.triggers.ondrag)
+	self.context.setFunction("onrelease", self.triggers.onrelease)
 	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
+	
 	self.context.startDraw()
 
 	q(function()
@@ -67,7 +68,5 @@ function BufferedComponent.drawIFN(q, self, hbr)
 
 	self.context.clear()
 
-	for k, v in util.ripairs(self.children) do
-		q(v.drawIFN, v, size)
-	end
+	for k, v in util.ripairs(self.children) do q(v.drawIFN, v, size) end
 end

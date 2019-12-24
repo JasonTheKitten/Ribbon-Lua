@@ -64,9 +64,7 @@ function BlockComponent:mCalcSize(q, size, values)
 
 	if self.location then
 		local l, oldPos = self.location, size.position
-		size.position = class.new(Position,
-			ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], self.size.width, l[5], self.size.height, l[6])
-		)
+		self.position = class.new(Position, 0, 0)
 		q(function() size.position = oldPos end)
 	end
 	self.position = size.position:clone()
@@ -76,6 +74,15 @@ function BlockComponent:mCalcSize(q, size, values)
 
 	q(function()
 		self.scrollableSize = self.size:clone()
+		self:updateContextPosition()
+		
+		if self.location then
+			local l = self.location
+			self.position = class.new(Position,
+				ctxu.calcPos(self.dockcontext, l[2], l[1], l[4], l[3], self.size.width, l[5], self.size.height, l[6])
+			)
+		end
+		
 		self:updateContextPosition()
 
 		if not (self.attributes["location"] or self.attributes["dock"]) then
@@ -108,10 +115,12 @@ function BlockComponent.drawIFN(q, self)
 	local obg, ofg = self.context.getColors()
 	local dbg, dfg = self.parent.context.getColors()
 	local of = self.context.getFunctions()
+	
 	self.context.setFunction("onclick", self.triggers.onclick)
 	self.context.setFunction("ondrag", self.triggers.ondrag)
 	self.context.setFunction("onrelease", self.triggers.onrelease)
 	self.context.setColorsRaw(self.color or dbg, self.textColor or dfg)
+	
 	self.context.startDraw()
 	q(function()
 		self.context.endDraw()

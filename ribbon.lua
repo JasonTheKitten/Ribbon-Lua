@@ -68,23 +68,32 @@ ribbon.resolvePath = function(path, ftable, maxTries)
 end
 
 --Require Ribbon modules
-local required, cachedFS = {}, nil
+local required, triedFS, fsDone = {}, nil, false
+local mi = 0
 ribbon.require = function(p, e)
+	--print("About to load module! (debug="..tostring(mi)..","..p..")")
+	local mid = mi
+	mi=mi+1
     if not required[p] then
         local plist = {
             ribbon.resolvePath("${RIBBON}/modules/${module}.lua", {module=p})
         }
 
-		if cachedFS == nil then
-			local ok, rtn = pcall(ribbon.require, "filesystem", false)
-			cachedFS = ok and rtn
+		if not triedFS then
+			triedFS = true
+			local ok, err = pcall(ribbon.require, "filesystem", false)
+			if not ok then
+				required["filesystem"] = nil
+			else
+				fsDone = true
+			end
 		end
-        if cachedFS and elibs~=false then
+        if required["filesystem"] and fsDone and elibs~=false then
 			local libsPath = ribbon.resolvePath("${RIBBON}/libraries")
-            local list = cachedFS.list(libsPath)
+            local list = required["filesystem"].list(libsPath)
             for i=1, #list do
                 local resolved = libsPath.."/"..list[i].."/"..p..".lua"
-                if cachedFS.isFile(resolved) then
+                if required["filesystem"].isFile(resolved) then
                     plist[#plist+1] = resolved
                 end
             end
@@ -102,6 +111,10 @@ ribbon.require = function(p, e)
     	local extramethods=m(required[p])
 
     	setmetatable(required[p], {__index=extramethods})
+		
+		--print("Module done loading! (debug="..tostring(mid)..","..p..")")
+	else
+		--print("Module was already cached! (debug="..tostring(mid)..","..p..")")
     end
 
     return required[p]

@@ -24,8 +24,7 @@ function BaseComponent:__call(ctx, es)
 	self.childcontext = ctx
 	self.eventSystem = es or process
 	self.defaultComponent = class.new(BufferedComponent, self):attribute(
-		"width", {1, 0},
-		"height", {1, 0}
+		"width", {1}, "height", {1}
 	)
     self:update()
 
@@ -70,5 +69,3 @@ function BaseComponent:renderUpdated()
         self.graphicsUpdated = false
     end
 end
-
-basecomponent.execute = contextmanager.inContextManager --TODO: deprecated alias

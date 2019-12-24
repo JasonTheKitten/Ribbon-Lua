@@ -42,11 +42,6 @@ local function cXY(ctx, x, y)
 	return x-ctx.scroll.x, y-ctx.scroll.y
 end
 local function resolvePixelValue(v, i)
-    --[=[while true do
-        if type(v)=="function" then v=v()
-        elseif type(v)=="table" and i then v=v[1][v[2]][v[3]][i]
-        else return v end
-    end]=]
     return v
 end
 local runIFN = util.runIFN
@@ -244,7 +239,7 @@ context.getContext = function(parent, x, y, l, h)
 			local mx, my = (v.x or 0)+x-b.scrollx, (v.y or 0)+y-b.scrolly
 			if v.width or v.height or (mx>=0 and mx<l) or (my>=0 and my<h) then
 				local bg, char, fg =
-					v.background or getPixelInfo(v.x, v.y, "background"),
+					v.background or getPixelInfo(v.x, v.y, "background") or b.color,
 					v.char or getPixelInfo(v.x, v.y, "char"),
 					v.foreground or getPixelInfo(v.x, v.y, "foreground")
 				if v.width==1 and v.height==1 then
@@ -414,9 +409,7 @@ context.getNativeContext = function(display)
 					for x=0, #(data[y] or {}) do
                         local pixel = (data[y] or {})[x] or {}
                         local c, fg, bg = pixel[1], pixel[2], pixel[3]
-                        c=resolvePixelValue(c, 1)
-                        fg=resolvePixelValue(fg, 2)
-                        bg=resolvePixelValue(bg, 3)
+                        c,fg,bg=resolvePixelValue(c),resolvePixelValue(fg),resolvePixelValue(bg)
                         --TODO: table.concat?
 						by[1] = by[1]..(c       or " ")
 						by[2] = by[2]..(hex[fg] or "0")
@@ -446,7 +439,7 @@ context.getNativeContext = function(display)
 			checkInitialized(internals)
             if term.getSimulated() then return end
 
-            color, char, fg = resolvePixelValue(color, 2), resolvePixelValue(char, 1), resolvePixelValue(fg, 3)
+            color, char, fg = resolvePixelValue(color), resolvePixelValue(char), resolvePixelValue(fg)
 
 			char = (char and tostring(char)) or " "
 			color = color or internals.CONFIG.defaultBackgroundColor
@@ -466,7 +459,7 @@ context.getNativeContext = function(display)
 			checkInitialized(internals)
             if term.getSimulated() then return end
 
-            color = resolvePixelValue(color, 2)
+            color = resolvePixelValue(color)
 			char = char and tostring(char) or " "
 			if char == " " then
 				term.setBackgroundColor(2^(color or internals.CONFIG.defaultBackgroundColor or 0))
@@ -519,6 +512,7 @@ context.getNativeContext = function(display)
 			end,
 			setBackground = function(color)
 				color = color or 15
+				if type(color) == "string" then error("err", 2) end
 				if color>15 then error("Extended pallete coming at a later time", 3) end
 				if gpu then pcall(gpu.setBackground, color, true) end
 			end,
@@ -548,7 +542,7 @@ context.getNativeContext = function(display)
 			checkInitialized(internals)
             if term.getSimulated() then return end
 
-            color, char, fg = resolvePixelValue(color, 2), resolvePixelValue(char, 1), resolvePixelValue(fg, 3)
+            color, char, fg = resolvePixelValue(color), resolvePixelValue(char), resolvePixelValue(fg)
 
 			char = char and tostring(char)
 			color = color or internals.CONFIG.defaultBackgroundColor
@@ -557,8 +551,8 @@ context.getNativeContext = function(display)
 			x, y = x-ctx.scroll.x, y-ctx.scroll.y
 
 			if internals.isColor then
-				term.setBackground(color or internals.CONFIG.defaultBackgroundColor or 15)
-				term.setForeground(fg or internals.CONFIG.defaultTextColor or 0)
+				term.setBackground(color or 15)
+				term.setForeground(fg or 0)
 			end
 			term.set(x+1, y+1, char or " ")
 		end
@@ -568,7 +562,7 @@ context.getNativeContext = function(display)
 
             if not l or not h or l<1 or h<1 then error("Invalid dimensions", 2) end
 
-            color, char, fg = resolvePixelValue(color, 2), resolvePixelValue(char, 1), resolvePixelValue(fg, 3)
+            color, char, fg = resolvePixelValue(color), resolvePixelValue(char), resolvePixelValue(fg)
 
 			char = char and tostring(char)
 			color = color or internals.CONFIG.defaultBackgroundColor
@@ -650,9 +644,9 @@ context.getNativeContext = function(display)
                     trimmedData[y][x][2],
                     trimmedData[y][x][3]
 
-                color, char, fg = resolvePixelValue(color, 2), resolvePixelValue(char, 1), resolvePixelValue(fg, 3)
+                char, color, fg = resolvePixelValue(char), resolvePixelValue(color), resolvePixelValue(fg)
 
-                return color, char, fg
+                return char, color, fg
             end
 
 			for y=0, #trimmedData do
@@ -668,7 +662,7 @@ context.getNativeContext = function(display)
                             end
 
                             local char, color, fg = gdata(y, x+lengthH)
-							textH, bgH = textH..char, bgH or color, fgH or fg
+							textH, bgH, fgH = textH..char, bgH or color, fgH or fg
 							lengthH = lengthH+1
 						end
 						while checkEligible(x, y+heightV, bgV, fgV) do
@@ -677,7 +671,7 @@ context.getNativeContext = function(display)
                             end
 
                             local char, color, fg = gdata(y+heightV, x)
-							textV, bgV = textV..char, bgV or color, fgV or fg
+							textV, bgV, fgV = textV..char, bgV or color, fgV or fg
 							heightV = heightV+1
 						end
 						local textm, bgm, fgm
@@ -695,11 +689,11 @@ context.getNativeContext = function(display)
 						bgm, fgm = bgm or 0, fgm or 15
 						groups[bgm] = groups[bgm] or {}
 						groups[bgm][fgm] = groups[bgm][fgm] or {}
-						table.insert(groups[bgm][fgm], {
+						groups[bgm][fgm][#groups[bgm][fgm]+1] = {
 							x=x, y=y,
 							text = textm,
 							vertical = pointsV>pointsH,
-						})
+						}
 					end
 				end
 			end
@@ -708,6 +702,7 @@ context.getNativeContext = function(display)
 				term.setBackground(bg or 0)
 				for fg, gps in pairs(fgs) do
 					term.setForeground(fg or 15)
+					debugger.log(fg)
 					for id, dat in pairs(gps) do
 						term.set(dat.x+trimmedData.x+1, dat.y+trimmedData.y+1, dat.text, dat.vertical)
 					end

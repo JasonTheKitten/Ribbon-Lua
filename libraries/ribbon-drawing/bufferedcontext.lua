@@ -18,7 +18,8 @@ local function getData(buffer, x, y, l, h)
 		data[y] = {}
 		for x=0, l-1 do data[y][x] = {} end
 	end
-	for k, v in ipairs(buffer) do
+	for k=1, #buffer do
+		local v = buffer[k]
 		if v.x and v.y and v.width and v.height then
 			local sy, sx
 			for y=v.y, v.y+v.height-1 do
@@ -26,10 +27,11 @@ local function getData(buffer, x, y, l, h)
 				data[sy] = data[sy] or {}
 				for x=v.x, v.x+v.width-1 do
 					sx = x - scrollx
+					data[sy][sx] = data[sy][sx] or {}
 					data[sy][sx] = {
-						v.char or data[sy][sx][1],
-						v.background or data[sy][sx][2] or 0,
-						v.foreground or data[sy][sx][3] or 15,
+						v.char or data[sy][sx][1] or " ",
+						v.background or data[sy][sx][2] or buffer.color or 0,
+						v.foreground or data[sy][sx][3] or buffer.textColor or 15,
 					}
 				end
 			end
@@ -38,9 +40,9 @@ local function getData(buffer, x, y, l, h)
 				data[y] = data[y] or {}
 				for x=0, l-1 do 
 					data[y][x] = {
-						v.char or data[y][x][1],
-						v.background or data[y][x][2] or 0,
-						v.foreground or data[y][x][3] or 15,
+						v.char or data[y][x][1] or " ",
+						v.background or data[y][x][2] or buffer.color or 0,
+						v.foreground or data[y][x][3] or buffer.textColor or 15,
 					}
 				end
 			end
@@ -68,7 +70,7 @@ bctx.wrapContext = function(ctx, es)
 	end
 
 	local buffer = {}
-	local charVisible, contextColor = true, nil
+	local charVisible, contextColor, textColor = true, nil, nil
 	local functions = {}
 	
 	ifn.drawPixel = function(x, y, color, char, fg)
@@ -78,6 +80,8 @@ bctx.wrapContext = function(ctx, es)
 			return ifn.drawFilledRect(x, y, 1, 1, color, char, fg)
 		end
 	end
+	ctx.drawPixel = ifn.drawPixel
+	
 	ifn.drawFilledRect = function(x, y, l, h, color, char, fg)
 		if x>=0 and y>=0 then
 			local pixel = {x=x, y=y, width=l, height=h, functions = {}}
@@ -98,14 +102,16 @@ bctx.wrapContext = function(ctx, es)
 				if iF then return v.functions[dtype] else return v[dtype] end
 			end
 		end
+		if iF then return buffer.screen.functions[dtype] end
 	end
 	
-	ctx.clear = function(color)
+	ctx.clear = function(color, fg)
 		checkInitialized()
 		
 		contextColor = color or internals.CONFIG.defaultBackgroundColor
+		textColor = fg or internals.CONFIG.defaultTextColor
 		
-		local screen = {functions = {}}
+		local screen = {functions = {}, background=contextColor}
 		buffer = {screen}
 		
         for k, v in pairs(functions) do
@@ -164,6 +170,8 @@ bctx.wrapContext = function(ctx, es)
 	ctx.getData = function(px, py, l, h)
 		buffer.scrollx = self.scroll.x
 		buffer.scrolly = self.scroll.y
+		buffer.color = contextColor
+		buffer.textColor = textColor
 		return getData(buffer)
 	end
 	

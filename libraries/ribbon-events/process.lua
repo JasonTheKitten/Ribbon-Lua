@@ -71,8 +71,8 @@ process.execute = function(f, ...)
 			local e = {natives.require("computer").pullSignal(.1)}
 			while (#e>0) do
 				if e[1] == "interrupted" then terminate() end
-				table.insert(eq, 1, e)
-				e = {natives.require("computer").pullSignal(.3)}
+				eq[#eq+1] = e --I guess we insert at the last index for OC? Huh..
+				e = {natives.require("computer").pullSignal(.1)}
 			end
 		end
 	end
