@@ -1,7 +1,11 @@
 --TODO: Bounding boxes for graphic updates
---TODO: Support shared styles
+--TODO: Internal and external component stylesheets (important)
+--TODO: Internal children slots (children invisible to applications)
 --TODO: Keyboard selection (Tab-Focus)
+--TODO: Disable stuff when dragging items
 --TODO: Copy/Paste?
+--TODO: Optimize size calculation (Don't calculate preceding siblings upon tree modification)
+--TODO: Store whether or not the component's parents were all enabled (for drawing purposes)
 
 local ribbon = require()
 
@@ -10,6 +14,7 @@ local ctx = ribbon.require "context"
 local ctxu = ribbon.require "contextutils"
 local debugger = ribbon.require "debugger"
 local process = ribbon.require "process"
+local ribbonos = ribbon.require "ribbonos"
 local util = ribbon.require "util"
 
 local Size = ribbon.require("class/size").Size
@@ -40,7 +45,7 @@ function Component:__call(parent)
 	}
 	self.enableChildWrap = true
 
-	local function regH(t, enableRequired)
+	local function regH(t, enableRequired, qualifier)
 		self.triggers["on"..t] = function(e, d)
 			local d = util.copy(d)
 			d.element = self
@@ -52,28 +57,45 @@ function Component:__call(parent)
 				pel = pel.parent
 			until not pel.parent
 
-			local q = pel:query()
+			local q = pel:queryAbrupt(function(el)
+				if not el.attributes["enabled"] then return false end
+				return true --TODO: Check dragging element
+			end)
+			
 			for i=1, #q do
 				local v = q[i]
 				if clicked[v] then
 					v.handlers["on"..t](e, d)
 				else
-					v.handlers["onexternal"..t](e, d) --TODO: Not firing?
+					v.handlers["onexternal"..t](e, d)
 				end
 			end
 		end
         self.handlers["on"..t] = function(e, d)
-			self.eventSystem.fireEvent(t, d)
-    		if self.attributes["on"..t] and (not enableRequired or self.attributes.enabled) then self.attributes["on"..t](d, self) end
+			if (not enableRequired or self.attributes.enabled) and (not qualifier or qualifier(e, d)) then
+				self.eventSystem.fireEvent(t, d)
+				if self.attributes["on"..t] then
+					self.attributes["on"..t](d, self)
+				end
+			end
     	end
     	self.handlers["onexternal"..t] = function(e, d)
     		self.eventSystem.fireEvent("external_"..t, d)
     		if self.attributes["onexternal"..t] then self.attributes["onexternal"..t](d, self) end
     	end
 	end
-	regH("click", true)
-	regH("drag", true)
-	regH("release", true)
+	local function cursorDataQualifier(e, d)
+		local cursordata = ribbonos.receive("CURSORDATA")
+		if not cursordata.clipboardtype then return true end
+		if self.attributes["cursor-qualifier"] then
+			return self.attributes["cursor-qualifier"](cursordata)
+		end
+		return false
+	end
+	regH("click", true, cursorDataQualifier)
+	regH("drag", true, cursorDataQualifier)
+	regH("release", true, cursorDataQualifier)
+	
 	self.handlers.onupdate = function()
 		self.eventSystem.fireEvent("component_update", nil)
 		if self.attributes.onupdate then self.attributes.onupdate(nil) end
@@ -108,6 +130,10 @@ function Component:__call(parent)
 	self:addEventListener("external_drag", setUnselectedEvent)
 	self:addEventListener("release", setUnselectedEvent)
 	self:addEventListener("external_release", setUnselectedEvent)
+	
+	self:addEventListener("component_delete", function(e, d)
+		if self.attributes["ondelete"] then self.attributes["ondelete"](d, self) end
+	end)
 
 	if parent then self:setParent(parent) end
 end
@@ -122,6 +148,7 @@ function Component:removeChild(child)
 		if rawequal(child, v) then
 			v.parent = nil
 			v.context = nil
+			self.children[k].eventSystem.fireEvent("component_delete")
 			table.remove(self.children, k)
 			break
 		end
@@ -132,16 +159,46 @@ function Component:removeChildren()
 	for i=1, #self.children do
 		self.children[i].parent = nil
 		self.children[i].context = nil
+		self.children[i].eventSystem.fireEvent("component_delete")
 	end
 	self.children = {}
 	self:fireUpdateEvent()
 end
-function Component:addChild(child)
+function Component:addChild(child, i)
     class.checkType(child, Component, 2, "Component")
     child:delete()
     child.parent = self
-	table.insert(self.children, child)
+	if i and i~=#self.children+1 then
+		table.insert(self.children, i, child)
+	else
+		self.children[#self.children+1] = child
+	end
 	self:fireUpdateEvent()
+end
+function Component:insertBefore(sibling)
+	class.checkType(sibling, Component, 2, "Component")
+	if not sibling.parent then error("Attempt to insert where there is no tree", 2) end
+	local children = sibling.parent.children
+	for i=1, #children do
+		if rawequal(children[i], sibling) then
+			sibling.parent:addChild(self, i)
+			break
+		end
+	end
+end
+function Component:insertAfter(sibling)
+	class.checkType(sibling, Component, 2, "Component")
+	if not sibling.parent then error("Attempt to insert where there is no tree", 2) end
+	local children = sibling.parent.children
+	for i=1, #children do
+		if rawequal(children[i], sibling) then
+			sibling.parent:addChild(self, i+1)
+			break
+		end
+	end
+end
+function Component:insertAfter()
+
 end
 function Component:setParent(parent)
 	class.checkType(parent, Component, 2, "Component")
@@ -150,10 +207,13 @@ end
 
 function Component:attribute(...)
 	local args, updated = {...}, {}
+	if type(args[1])=="table" then args=args[1] end
 	for k, v in pairs(args) do
 		if k%2==1 then
-			self.attributes[v] = args[k+1]
-			updated[v] = true
+			for opt in v:gmatch("[^&]+") do
+				self.attributes[opt] = args[k+1]
+				updated[opt] = true
+			end
 		end
 	end
 	self:processAttributes(updated)
@@ -215,8 +275,40 @@ function Component:query(qf)
 	end
 	return final
 end
+function Component:queryAbrupt(qf)
+	local q, final = {self}, {}
+	while #q>0 do
+		local curi = q[#q]; q[#q] = nil
+		local res = not qf or qf(curi)
+		if res then
+			if res~=2 then final[#final+1] = curi end
+			for i=1, #curi.children do
+				q[#q+1]=curi.children[i]
+			end
+		end
+	end
+	return final
+end
+function Component:queryShallow(qf)
+	local final = {}
+	for i=1, #self.children do
+		if not qf or qf(self.children[i]) then final[#final+1] = self.children[i] end
+	end
+	return final
+end
+function Component:childOf(p, inclusive)
+	local parent = (inclusive and self) or self.parent
+	while parent do
+		if rawequal(parent, p) then return true end
+		parent = parent.parent
+	end
+	return false
+end
 function Component:getComponentByID(id)
 	return self:query(function(comp) return comp.attributes["id"] == id end)[1]
+end
+function Component:getComponentsByClass(class)
+	return self:query(function(comp) return comp.attributes["class"] == class end)
 end
 function Component:getComponentsByType(ctype)
 	return self:query(function(comp) return comp:isA(ctype) end)
@@ -246,7 +338,7 @@ function Component:queueChildrenCalcSize(q, size, values)
 		end
 	end
 end
-function Component:mCalcSize(q, size, delayed)
+function Component:mCalcSize(q, size, values)
     self.enableWrap = self.parent.enableChildWrap and self.attributes["enable-wrap"]
     self.enableChildWrap = self.parent.enableChildWrap and self.attributes["enable-child-wrap"]
 

@@ -24,7 +24,15 @@ local backgroundscripts = {}
 local eventsystems = {}
 local rawProcs = {}
 
+local busy, qtop = 1/60, 32 --A framerate of 10 fps or less
 local eq = {}
+
+process.busyFallbackTimerCC = .2
+process.busyTimeoutOC = 1/60
+process.setBusy = function(b)
+	busy=(b==nil and 1/60) or b
+end
+
 process.execute = function(f, ...)
 	local cid = tostring(ribbon):gsub("table: ", "")
 	local c = coroutine.create(f)
@@ -55,24 +63,26 @@ process.execute = function(f, ...)
 	if isCC then
 		catchEvents = function()
 			eq = {}
-			natives.os.queueEvent("q_bottom", cid)
-			local tid = natives.os.startTimer(.1) --.05
+			if busy==true then natives.os.queueEvent("q_bottom", cid) end
+			local tid
+			if busy then tid = natives.os.startTimer((busy==true and process.busyFallbackTimerCC) or busy) end
 			local e = {coroutine.yield()}
 			while not ((e[1]=="q_bottom" and e[2]==cid) or (e[1] == "timer" and e[2] == tid)) do
 				if e[1] == "terminate" then terminate() end
 				table.insert(eq, 1, e)
 				e = {coroutine.yield()}
 			end
-			natives.os.cancelTimer(tid)
+			if tid then natives.os.cancelTimer(tid) end
 		end
 	elseif isOC then
 		catchEvents = function()
 			eq = {}
-			local e = {natives.require("computer").pullSignal(.1)}
+			local computer = natives.require("computer")
+			local e = {computer.pullSignal((busy==true and process.busyTimeoutOC) or busy)}
 			while (#e>0) do
 				if e[1] == "interrupted" then terminate() end
 				eq[#eq+1] = e --I guess we insert at the last index for OC? Huh..
-				e = {natives.require("computer").pullSignal(.1)}
+				e = {computer.pullSignal((busy==true and process.busyTimeoutOC) or busy)}
 			end
 		end
 	end
@@ -151,9 +161,7 @@ process.createEventSystem = function()
 		end
 	end
 	local id = 0
-	eventSystem.addEventListener = function(e, f, d, mid)
-		if not mid then id = id+1 end
-		local id = mid or id
+	local function ael(e, f, d, id)
 		if d then
 			if e then
 				eventSystem.defaultListeners[e] = eventSystem.defaultListeners[e] or {}
@@ -168,6 +176,17 @@ process.createEventSystem = function()
 			else
 				eventSystem.rlisteners[id] = f
 			end
+		end
+	end
+	eventSystem.addEventListener = function(e2, f, d, mid)
+		if not mid then id = id+1 end
+		local id = mid or id
+		if e2 then
+			for e in e2:gmatch("[^&]+") do
+				ael(e, f, d, id)
+			end
+		else
+			ael(nil, f, d, id)
 		end
 		return id
 	end
@@ -186,9 +205,6 @@ process.createEventSystem = function()
 	eventSystem.getInterruptsEnabled = function()
 		return eventSystem.interruptsEnabled
 	end
-	--[[eventSystem.getLatestEvent = function()
-		return eventSystem.latestEvent
-	end]]
 
 	return eventSystem, function(tbl)
 		--Event System Installer

@@ -623,8 +623,10 @@ context.getNativeContext = function(display)
 			local trimmedData = {x=data.x, y=data.y}
 			for y=0, #data do
 				trimmedData[y] = {}
+				data[y] = data[y] or {}
 				for x=0, #data[y] do
-					trimmedData[y][x] = {processed = false, data[y][x][1],data[y][x][2],data[y][x][3]}
+					local mdata = data[y][x] or {}
+					trimmedData[y][x] = {processed = false, mdata[1],mdata[2],mdata[3]}
 				end
 			end
 			local space = {[" "] = true, ["\t"] = true}

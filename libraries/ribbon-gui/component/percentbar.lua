@@ -22,10 +22,10 @@ function PercentBar:__call(parent)
     self.preferredSize = class.new(Size, 8, 1)
 end
 
-function PercentBar.calcSizeIFN(q, self, size)
+function PercentBar.calcSizeIFN(q, self, size, values)
 	if not self.parent then return end
 
-	Component.calcSizeIFN(q, self, size)
+	Component.calcSizeIFN(q, self, size, values)
 end
 function PercentBar.drawIFN(q, self)
 	if not self.parent then return end
@@ -34,7 +34,7 @@ function PercentBar.drawIFN(q, self)
 
 	local size = self.size
 	local position = self.position
-	for x=0, math.ceil(size.width*self.attributes["percent"])-1 do
-		self.dockcontext.drawPixel(position.x+x-1, position.y, self.attributes["bar-color"], " ")
+	for x=0, math.floor(size.width*self.attributes["percent"])-1 do
+		self.dockcontext.drawPixel(position.x+x, position.y, self.attributes["bar-color"], " ")
 	end
 end

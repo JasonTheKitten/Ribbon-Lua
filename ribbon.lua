@@ -148,12 +148,7 @@ ribbon.execute = function(path, ...)
 	
 	pcall(ribbon.require, "ribbonos")
 
-    local ok, process = pcall(ribbon.require, "process")
-    if ok then
-        process.execute(func, ...)
-    else
-        func(...) --TODO: Warn
-    end
+    ribbon.require("process").execute(func, ...)
 end
 
 --Arg passing

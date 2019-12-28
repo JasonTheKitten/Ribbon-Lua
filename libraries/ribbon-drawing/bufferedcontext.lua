@@ -83,7 +83,7 @@ bctx.wrapContext = function(ctx, es)
 	ctx.drawPixel = ifn.drawPixel
 	
 	ifn.drawFilledRect = function(x, y, l, h, color, char, fg)
-		if x>=0 and y>=0 then
+		if x+l>=0 and y+h>=0 then
 			local pixel = {x=x, y=y, width=l, height=h, functions = {}}
 			pixel.char = char or " "
 			pixel.foreground = fg or internals.CONFIG.defaultTextColor

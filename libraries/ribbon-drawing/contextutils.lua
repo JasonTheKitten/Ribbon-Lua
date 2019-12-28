@@ -16,17 +16,24 @@ contextutils.calcPos = function(ctx, ax, px, ay, py, l, opl, h, oph, ovw, ovh)
 		math.floor(ay+(ovh or ctx.height)*py+oy)
 end
 
-contextutils.translateMouseCordsUp = function(ctx, x, y, parent)
+local function tmc(ctx, x, y, parent, d)
     local cctx = ctx
     while cctx and cctx~=parent do
-        x=x-cctx.position.x
-        y=y-cctx.position.y
+        x=x+d*cctx.position.x
+        y=y+d*cctx.position.y
         cctx=cctx.parent
     end
     if parent and cctx~=parent then
         error("Unable to resolve cords: Invalid parent", 2)
     end
     return x, y
+end
+
+contextutils.translateMouseCordsUp = function(a,b,c,d)
+	return tmc(a,b,c,d,-1)
+end
+contextutils.translateMouseCordsDown = function(a,b,c,d)
+	return tmc(a,b,c,d,1)
 end
 
 

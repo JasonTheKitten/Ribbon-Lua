@@ -76,10 +76,10 @@ local function internalSizeProc(self, size, f)
 end
 
 
-function Label.calcSizeIFN(q, self, size)
+function Label.calcSizeIFN(q, self, size, values)
 	if not self.parent then return end
 
-	Component.calcSizeIFN(q, self, size)
+	Component.calcSizeIFN(q, self, size, values)
 	
 	self.lastsize = self.spg:cloneAll()
 	self.lines = internalSizeProc(self, size)
